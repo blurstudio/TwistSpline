@@ -463,7 +463,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 					double s = pw + cw;
 					prev = slerp(prev, cur, cw / s);
 				}
-				MQuaternion xt(-otwists[pIdx], MVector(1.0, 0.0, 0.0));
+				MQuaternion xt(otwists[pIdx], MVector(1.0, 0.0, 0.0));
 				prev = xt * prev;
 				oquats.push_back(prev);
 			}

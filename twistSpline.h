@@ -472,7 +472,7 @@ public:
 			//Float sa = sin(angle);
 			//tnormals[i] = x * ca + n * dot<Vector, Float>(n, x) * (1 - ca) + cross(x, n) * sa;
 			// dot(n, x) is 0 b/c they're perpendicular, and I've already got cross(n, x) as the binormal
-			tnormals[i] = x * cos(angle) - y * sin(angle);
+			tnormals[i] = x * cos(angle) + y * sin(angle);
 			tbinormals[i] = cross(n, tnormals[i]);
 		}
 	}

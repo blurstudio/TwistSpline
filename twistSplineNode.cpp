@@ -29,6 +29,7 @@ SOFTWARE.
 #include <maya/MGlobal.h>
 #include <maya/MFnCompoundAttribute.h>
 #include <maya/MFnMatrixAttribute.h>
+#include <maya/MFnUnitAttribute.h>
 #include <maya/MFNPluginData.h>
 #include <maya/MMatrix.h>
 #include <maya/MFnPluginData.h>
@@ -61,8 +62,7 @@ MString	TwistSplineNode::drawRegistrantId("TwistSplineNodePlugin");
 
 MObject TwistSplineNode::aOutputSpline;
 MObject TwistSplineNode::aSplineLength;
-MObject TwistSplineNode::aFirstVertex;
-MObject TwistSplineNode::aFirstLock;
+
 MObject TwistSplineNode::aVertexData;
 MObject TwistSplineNode::aInTangent;
 MObject TwistSplineNode::aOutTangent;
@@ -81,6 +81,7 @@ MStatus TwistSplineNode::initialize() {
 	MFnMatrixAttribute mAttr;
 	MFnTypedAttribute tAttr;
 	MFnNumericAttribute nAttr;
+	MFnUnitAttribute uAttr;
 
 	//---------------- Output ------------------
 
@@ -91,20 +92,6 @@ MStatus TwistSplineNode::initialize() {
 	aSplineLength = nAttr.create("splineLength", "splineLength", MFnNumericData::kDouble);
 	nAttr.setWritable(false);
 	addAttribute(aSplineLength);
-
-	//----------------- Top-level -----------------
-	aFirstVertex = mAttr.create("firstVertex", "firstVertex");
-	mAttr.setHidden(true);
-	mAttr.setDefault(MMatrix::identity);
-	addAttribute(aFirstVertex);
-
-	aFirstLock = nAttr.create("firstLock", "firstLock", MFnNumericData::kDouble, 1.0);
-	nAttr.setHidden(false);
-	nAttr.setKeyable(true);
-	nAttr.setChannelBox(true);
-	nAttr.setMin(0.0);
-	nAttr.setMax(1.0);
-	addAttribute(aFirstLock);
 
 	//--------------- Array -------------------
 
@@ -130,7 +117,7 @@ MStatus TwistSplineNode::initialize() {
 	aUseOrient = nAttr.create("useOrient", "useOrient", MFnNumericData::kDouble, 0.0);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
-	aTwist = nAttr.create("twist", "twist", MFnNumericData::kDouble, 0.0);
+	aTwist = uAttr.create("twist", "twist", MFnUnitAttribute::kAngle, 0.0);
 
 	aVertexData = cAttr.create("vertexData", "vertexData");
 	cAttr.setArray(true);
@@ -146,8 +133,6 @@ MStatus TwistSplineNode::initialize() {
 
 	addAttribute(aVertexData);
 
-	attributeAffects(aFirstVertex, aOutputSpline);
-	attributeAffects(aFirstLock, aOutputSpline);
 	attributeAffects(aInTangent, aOutputSpline);
 	attributeAffects(aControlVertex, aOutputSpline);
 	attributeAffects(aOutTangent, aOutputSpline);
@@ -157,7 +142,6 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aTwist, aOutputSpline);
 	attributeAffects(aUseOrient, aOutputSpline);
 
-	attributeAffects(aFirstVertex, aSplineLength);
 	attributeAffects(aInTangent, aSplineLength);
 	attributeAffects(aControlVertex, aSplineLength);
 	attributeAffects(aOutTangent, aSplineLength);
@@ -206,22 +190,12 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		// Get all input Data
 		MPointArray points;
 		std::vector<MQuaternion> quats;
-		std::vector<double> lockPositions(1, 0.0);
-		//std::vector<double> lockVals(1, 1.0);
-		std::vector<double> twistLock(1, 1.0);
-		std::vector<double> userTwist(1, 0.0);
-		std::vector<double> orientLock(1, 1.0);
-
+		std::vector<double> lockPositions;
 		std::vector<double> lockVals;
-		MDataHandle l1h = data.inputValue(aFirstLock);
-		lockVals.push_back(l1h.asDouble());
+		std::vector<double> twistLock;
+		std::vector<double> userTwist;
+		std::vector<double> orientLock;
 
-		// Get the first matrix
-		MDataHandle v1h = data.inputValue(aFirstVertex);
-		auto v1m = MTransformationMatrix(v1h.asMatrix());
-		points.append(v1m.getTranslation(MSpace::kWorld));
-		quats.push_back(v1m.rotation());
-		
 		// loop over the input matrices
 		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
 		for (unsigned i = 0; i < inputs.elementCount(); ++i) {
@@ -231,28 +205,28 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			lockPositions.push_back(group.child(aRestLength).asDouble());
 			lockVals.push_back(group.child(aLock).asDouble());
 			twistLock.push_back(group.child(aUseTwist).asDouble());
-			userTwist.push_back(group.child(aTwist).asDouble() * M_PI / 180.0);
+			userTwist.push_back(group.child(aTwist).asDouble());
 			orientLock.push_back(group.child(aUseOrient).asDouble());
 
-			auto itMat = MTransformationMatrix(group.child(aInTangent).asMatrix());
-			auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
+			if (i > 0) {
+				// Ignore the tangent data for the first vertex
+				// because they come *before* it.  I'm just using the same interface
+				// for conveninece here
+				auto itMat = MTransformationMatrix(group.child(aInTangent).asMatrix());
+				points.append(itMat.getTranslation(MSpace::kWorld));
+				quats.push_back(itMat.rotation());
+
+				auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
+				points.append(otMat.getTranslation(MSpace::kWorld));
+				quats.push_back(otMat.rotation());
+			}
 			auto cvMat = MTransformationMatrix(group.child(aControlVertex).asMatrix());
-
-			MVector a = itMat.getTranslation(MSpace::kWorld);
-			MVector b = otMat.getTranslation(MSpace::kWorld);
-			MVector c = cvMat.getTranslation(MSpace::kWorld);
-			points.append(a);
-			points.append(b);
-			points.append(c);
-
-			// TODO: Get this stuff in the proper space
-			MQuaternion qa = itMat.rotation();
-			MQuaternion qb = otMat.rotation();
-			MQuaternion qc = cvMat.rotation();
-			quats.push_back(qa);
-			quats.push_back(qb);
-			quats.push_back(qc);
+			points.append(cvMat.getTranslation(MSpace::kWorld));
+			quats.push_back(cvMat.rotation());
 		}
+		
+		// We *ALWAYS* orient lock the first vertex. It's what the entire spline is based off of
+		orientLock[0] = 1.0;
 
 		// Output Data Handles
 		MDataHandle storageH = data.outputValue(aOutputSpline, &status);

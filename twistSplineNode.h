@@ -71,8 +71,6 @@ public:
 public:
 	static MObject aOutputSpline;
 	static MObject aSplineLength;
-	static MObject aFirstVertex;
-	static MObject aFirstLock;
 
 	// array
 	static MObject aVertexData;

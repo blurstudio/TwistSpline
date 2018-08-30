@@ -26,11 +26,7 @@ from maya import cmds
 
 #cmds.loadPlugin("TwistSpline.mll")
 
-
-def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None):
-    if maxParam is None:
-        maxParam = (numCVs - 1) * 10
-
+def mkTwistSplineControllers(pfx, numCVs, spread):
     # Make a CV Cube base
     cube = cmds.polyCube(constructionHistory=False)[0]
     # Make a Tan sphere base
@@ -40,7 +36,7 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None):
     cvs = []
     for i in range(numCVs):
         cv = cmds.duplicate(cube, name="{}SplineControl_{}".format(pfx, i+1))[0]
-        cmds.xform(cv, translation=(3*i, 0, 0))
+        cmds.xform(cv, translation=(spread*3*i, 0, 0))
         cvs.append(cv)
 
     # make the tangents and auto-tangents
@@ -52,12 +48,12 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None):
         # make oTan, and iTan
         oTan = cmds.duplicate(sphere, name="{}OutTangent_{}".format(pfx, i+1))[0]
         iTan = cmds.duplicate(sphere, name="{}InTangent_{}".format(pfx, i+2))[0]
-        cmds.xform(oTan, translation=(3*i+1, 0, 0))
-        cmds.xform(iTan, translation=(3*i+2, 0, 0))
+        cmds.xform(oTan, translation=(spread*(3*i+1), 0, 0))
+        cmds.xform(iTan, translation=(spread*(3*i+2), 0, 0))
         aoTan = cmds.spaceLocator(name="{}AutoOutTangent_{}".format(pfx, i+1))[0]
         aiTan = cmds.spaceLocator(name="{}AutoInTangent_{}".format(pfx, i+2))[0]
-        cmds.xform(aoTan, translation=(3*i+1, 0, 0))
-        cmds.xform(aiTan, translation=(3*i+2, 0, 0))
+        cmds.xform(aoTan, translation=(spread*(3*i+1), 0, 0))
+        cmds.xform(aiTan, translation=(spread*(3*i+2), 0, 0))
         oTans.append(oTan)
         iTans.append(iTan)
         aoTans.append(aoTan)
@@ -65,26 +61,14 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None):
         cmds.parent(oTan, cvs[i])
         cmds.parent(iTan, cvs[i+1])
 
-    # make the joints (or locators?)
-    # just make them at origin. The constraint will put them in place
-    jPars = []
-    joints = []
-    for i in range(numJoints):
-        jp = cmds.spaceLocator(name="{}JointPar_{}".format(pfx, i+1))[0] # just for viewing
-        cmds.setAttr("{}Shape.localScaleX".format(jp), 0.25)
-        cmds.setAttr("{}Shape.localScaleY".format(jp), 0.25)
-        cmds.setAttr("{}Shape.localScaleZ".format(jp), 0.25)
-        j = cmds.createNode("joint", name="{}Joint_{}".format(pfx, i+1))
-        cmds.parent(j, jp)
-        jPars.append(jp)
-        joints.append(j)
+    cmds.delete((cube, sphere))
+    return cvs, oTans, iTans, aoTans, aiTans 
 
-    cmds.hide(joints)
-
+def connectTwistSplineTangents(cvs, oTans, iTans, aoTans, aiTans):
     # connect all the in/out tangents
     otts = []
     itts = []
-    for i in range(numCVs-1):
+    for i in range(len(cvs)-1):
         ott = cmds.createNode("twistTangent")
         otts.append(ott)
         cmds.connectAttr("{}.worldMatrix[0]".format(oTans[i]), "{}.inTangent".format(ott))
@@ -116,17 +100,41 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None):
     for a, t in zip(aiTans, itts):
         cmds.connectAttr("{0}.out".format(t), "{}.translate".format(a))
 
+def buildTwistSpline(pfx, cvs, aoTans, aiTans, maxParam):
+    numCVs = len(cvs)
+
     # build the spline object and set the spline Params
-    spline = cmds.createNode("twistSpline")
+    splineTfm = cmds.createNode("transform", name="{0}TwistSpline".format(pfx))
+    spline = cmds.createNode("twistSpline", parent=splineTfm, name="{0}TwistSplineShape".format(pfx))
+    for i in range(numCVs):
+        if i > 0:
+            cmds.connectAttr("{}.worldMatrix[0]".format(aiTans[i-1]), "{}.vertexData[{}].outTangent".format(spline, i))
+            cmds.connectAttr("{}.worldMatrix[0]".format(aoTans[i-1]), "{}.vertexData[{}].inTangent".format(spline, i))
+        cmds.connectAttr("{}.worldMatrix[0]".format(cvs[i]), "{}.vertexData[{}].controlVertex".format(spline, i))
+        cmds.setAttr("{}.vertexData[{}].restLength".format(spline, i), (i*maxParam) / (numCVs-1.0))
 
-    cmds.connectAttr("{}.worldMatrix[0]".format(cvs[0]), "{}.firstVertex".format(spline))
-    for i in range(numCVs-1):
-        cmds.connectAttr("{}.worldMatrix[0]".format(aoTans[i]), "{}.vertexData[{}].inTangent".format(spline, i))
-        cmds.connectAttr("{}.worldMatrix[0]".format(cvs[i+1]), "{}.vertexData[{}].controlVertex".format(spline, i))
-        cmds.connectAttr("{}.worldMatrix[0]".format(aiTans[i]), "{}.vertexData[{}].outTangent".format(spline, i))
-        cmds.setAttr("{}.vertexData[{}].restLength".format(spline, i), ((i+1.0)*maxParam) / (numCVs-1.0))
-    cmds.setAttr("{}.vertexData[{}].lock".format(spline, numCVs-2), 1.0)
+    cmds.setAttr("{}.vertexData[{}].lock".format(spline, 0), 1.0)
+    cmds.setAttr("{}.vertexData[{}].useTwist".format(spline, 0), 1.0)
+    cmds.setAttr("{}.vertexData[{}].lock".format(spline, numCVs-1), 1.0)
 
+    return spline
+
+def buildRiders(pfx, spline, numJoints):
+    # make the joints (or locators?)
+    # just make them at origin. The constraint will put them in place
+    jPars = []
+    joints = []
+    for i in range(numJoints):
+        jp = cmds.spaceLocator(name="{}JointPar_{}".format(pfx, i+1))[0] # just for viewing
+        cmds.setAttr("{}Shape.localScaleX".format(jp), 0.25)
+        cmds.setAttr("{}Shape.localScaleY".format(jp), 0.25)
+        cmds.setAttr("{}Shape.localScaleZ".format(jp), 0.25)
+        j = cmds.createNode("joint", name="{}Joint_{}".format(pfx, i+1))
+        cmds.parent(j, jp)
+        jPars.append(jp)
+        joints.append(j)
+
+    cmds.hide(joints)
 
     # build the constraint object
     rider = cmds.createNode("riderConstraint")
@@ -139,15 +147,20 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None):
         cmds.connectAttr("{0}.outputs[{1}].rotate".format(rider, i), "{}.rotate".format(jPars[i]))
         cmds.connectAttr("{0}.outputs[{1}].scale".format(rider, i), "{}.scale".format(jPars[i]))
 
+    return jPars, joints
 
+def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0):
+    if maxParam is None:
+        maxParam = (numCVs - 1) * spread * 3.0
 
-    cmds.delete((cube, sphere))
-
-
+    cvs, oTans, iTans, aoTans, aiTans = mkTwistSplineControllers(pfx, numCVs, spread)
+    connectTwistSplineTangents(cvs, oTans, iTans, aoTans, aiTans)
+    spline = buildTwistSpline(pfx, cvs, aoTans, aiTans, maxParam)
+    jPars, joints = buildRiders(pfx, spline, numJoints)
 
 cmds.file(force=True, newFile=True)
-makeTwistSpline("spline_A", 4, 100)
-makeTwistSpline("spline_B", 5, 0)
+makeTwistSpline("spline_A", 4, 100, 3)
+makeTwistSpline("spline_B", 5, 0, 3)
 
 
 

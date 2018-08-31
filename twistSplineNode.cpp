@@ -198,8 +198,11 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// loop over the input matrices
 		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
-		for (unsigned i = 0; i < inputs.elementCount(); ++i) {
-			inputs.jumpToArrayElement(i);
+		unsigned ecount = inputs.elementCount();
+
+		// I'm OK with just looping over the physical indices here
+		// because if it's unconnected, then I don't really care
+		for (unsigned i = 0; i < ecount; ++i) {
 			auto group = inputs.inputValue();
 
 			lockPositions.push_back(group.child(aRestLength).asDouble());
@@ -223,6 +226,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			auto cvMat = MTransformationMatrix(group.child(aControlVertex).asMatrix());
 			points.append(cvMat.getTranslation(MSpace::kWorld));
 			quats.push_back(cvMat.rotation());
+			inputs.next();
 		}
 		
 		// We *ALWAYS* orient lock the first vertex. It's what the entire spline is based off of

@@ -313,14 +313,26 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		MStatus status;
 		std::vector<TwistSplineT*> splines;
 		std::vector<double> weights;
+		unsigned ecount, possibleMax;
 
 		// First, get the splines that need computing, and their weight.
 		MArrayDataHandle inSpAH = data.inputArrayValue(aInputSplines);
-		unsigned ecount = inSpAH.elementCount();
+		ecount = inSpAH.elementCount();
+		inSpAH.jumpToArrayElement(ecount - 1);
+		possibleMax = inSpAH.elementIndex();
+		weights.resize(possibleMax+1);
+		splines.resize(possibleMax+1);
+		inSpAH.jumpToArrayElement(0);
 
 		for (unsigned i = 0; i < ecount; ++i) {
-			inSpAH.jumpToArrayElement(i);
 			auto inSpGroup = inSpAH.inputValue();
+			unsigned realIndex = inSpAH.elementIndex();
+			if (realIndex > possibleMax) {
+				weights.resize(realIndex+1);
+				splines.resize(realIndex+1);
+				possibleMax = realIndex;
+			}
+
 			MDataHandle inSpwH = inSpGroup.child(aWeight);
 
 			double inSpw = inSpwH.asDouble();
@@ -334,8 +346,10 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			TwistSplineT *spline = inSplineData->getSpline();
 			if (spline == nullptr) continue;
 
-			weights.push_back(inSpw);
-			splines.push_back(spline);
+			weights[realIndex] = inSpw;
+			splines[realIndex] = spline;
+
+			inSpAH.next();
 		}
 
 		if (splines.size() == 0) {
@@ -353,12 +367,23 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		// Get the params
 		MArrayDataHandle inPAH = data.inputArrayValue(aParams, &status);
 		std::vector<double> params;
+
 		ecount = inPAH.elementCount();
+		inPAH.jumpToArrayElement(ecount - 1);
+		possibleMax = inPAH.elementIndex();
+		params.resize(possibleMax+1);
+		inPAH.jumpToArrayElement(0);
+
 		for (unsigned i = 0; i < ecount; ++i) {
-			inPAH.jumpToArrayElement(i);
+			unsigned realIndex = inPAH.elementIndex();
+			if (realIndex > possibleMax) {
+				params.resize(realIndex+1);
+				possibleMax = realIndex;
+			}
 			auto inPH = inPAH.inputValue(&status);
 			double inParam = inPH.asDouble();
-			params.push_back(inParam);
+			params[realIndex] = inParam;
+			inPAH.next();
 		}
 
 		// Deal with cycling and the global offset

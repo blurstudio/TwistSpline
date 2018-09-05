@@ -48,6 +48,8 @@ public:
 		static MObject     riderConstraint::aWeight;
 
 	static MObject     riderConstraint::aParams;
+		static MObject     riderConstraint::aParam;
+		static MObject     riderConstraint::aParentInverseMatrix;
 
 	// output
 	static MObject     riderConstraint::aOutputs;

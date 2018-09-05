@@ -202,14 +202,20 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// I'm OK with just looping over the physical indices here
 		// because if it's unconnected, then I don't really care
+		bool gotLocks = false;
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto group = inputs.inputValue();
 
 			lockPositions.push_back(group.child(aRestLength).asDouble());
-			lockVals.push_back(group.child(aLock).asDouble());
+
+			double lockIt = group.child(aLock).asDouble();
+			lockVals.push_back(lockIt);
+
 			twistLock.push_back(group.child(aUseTwist).asDouble());
 			userTwist.push_back(group.child(aTwist).asDouble());
 			orientLock.push_back(group.child(aUseOrient).asDouble());
+
+			if (lockIt > 0.0) gotLocks = true;
 
 			if (i > 0) {
 				// Ignore the tangent data for the first vertex
@@ -229,6 +235,9 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			inputs.next();
 		}
 		
+		if (!gotLocks && !lockVals.empty())
+			lockVals[0] = 1.0;
+
 		// We *ALWAYS* orient lock the first vertex. It's what the entire spline is based off of
 		orientLock[0] = 1.0;
 

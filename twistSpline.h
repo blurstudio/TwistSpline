@@ -95,8 +95,15 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
 	else {
 		auto lbIt = ubIt - 1;
 		segT = (t - *lbIt) / (*ubIt - *lbIt);
-		segIdx = lbIt - samp.begin();
+		segIdx = lbIt - samp.begin(); 
+		if (segIdx < samp.size() - 2 && segT > 0.99999999999) {
+			// Snap values close to the end to the next segment
+			// This removes a lot of jitter
+			segT = 0.0;
+			++segIdx;
+		}
 	}
+
 }
 
 
@@ -369,7 +376,7 @@ public:
 		size_t i;
 		linearIndex(lenT, sampleLengths, t, i);
 		segT = (t + i) / lutSteps;
-		if (abs(t) < 1.0e-14) {
+		if (abs(t) < 1.0e-11) { // t == 0
 			tan = tangents[i];
 			norm = normals[i];
 			binorm = binormals[i];
@@ -387,7 +394,7 @@ public:
 			scl = Point(1.0, 1.0, 1.0); // TODO
 			return;
 		}
-		if (t > 1.0) {
+		if (t > 0.99999999999) {
 			tran = (normalized(tangents[size(tangents) - 1]) * (lenT - getLength())) + points[size(points) - 1];
 			tan = tangents[size(tangents) - 1];
 			norm = normals[size(normals) - 1];
@@ -612,7 +619,15 @@ public:
 				Vector d = pre->getRawNormals()[last];
 				Vector a = pre->getTangents()[last];
 				Vector b = normalized(verts[3 * i + 1] - verts[3 * i]);
-				Vector n = normalized(a + b);
+				Vector ab = a + b;
+				Float ll = length(ab);
+				Vector n;
+				if (ll == 0.0) {
+					n = b;
+				}
+				else {
+					n = normalized(a + b);
+				}
 				iNorm = d - 2 * dot<Vector, Float>(d, n) * n;
 			}
 			segments[i] = std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>(

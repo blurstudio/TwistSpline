@@ -66,7 +66,7 @@ public:
 	}
 	virtual MBoundingBox boundingBox() const;
 	TwistSplineT* getSplineData() const;
-
+	void getDebugDraw(bool &oDraw, double &oScale) const;
 
 public:
 	static MObject aOutputSpline;
@@ -78,13 +78,16 @@ public:
 		static MObject aInTangent;
 		static MObject aOutTangent;
 		static MObject aControlVertex;
-		static MObject aRestLength;
-		static MObject aLock;
-		static MObject aUseTwist;
-		static MObject aTwist;
+		static MObject aParamValue;
+		static MObject aParamWeight;
+		static MObject aTwistValue;
+		static MObject aTwistWeight;
 		static MObject aUseOrient;
-	static MTypeId	id;
 
+	static MObject aDebugDisplay;
+	static MObject aDebugScale;
+
+	static MTypeId	id;
 	static MString drawDbClassification;
 	static MString drawRegistrantId;
 };
@@ -99,6 +102,8 @@ public:
 	MPointArray tangents;
 	MPointArray normals;
 	MPointArray binormals;
+	bool debugDraw;
+	double debugScale;
 };
 
 class TwistSplineDrawOverride : public MHWRender::MPxDrawOverride {
@@ -114,6 +119,7 @@ public:
 	virtual bool isBounded( const MDagPath& objPath, const MDagPath& cameraPath) const; 
 
 	virtual MBoundingBox boundingBox( const MDagPath& objPath, const MDagPath& cameraPath) const;
+	void TwistSplineDrawOverride::getDebugDraw(const MDagPath& objPath, bool &oDraw, bool &oScale) const;
 
 	virtual MUserData* prepareForDraw(
 		const MDagPath& objPath,

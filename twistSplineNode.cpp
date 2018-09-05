@@ -67,11 +67,14 @@ MObject TwistSplineNode::aVertexData;
 MObject TwistSplineNode::aInTangent;
 MObject TwistSplineNode::aOutTangent;
 MObject TwistSplineNode::aControlVertex;
-MObject TwistSplineNode::aRestLength;
-MObject TwistSplineNode::aLock;
-MObject TwistSplineNode::aUseTwist;
+MObject TwistSplineNode::aParamValue;
+MObject TwistSplineNode::aParamWeight;
+MObject TwistSplineNode::aTwistValue;
+MObject TwistSplineNode::aTwistWeight;
 MObject TwistSplineNode::aUseOrient;
-MObject TwistSplineNode::aTwist;
+
+MObject TwistSplineNode::aDebugDisplay;
+MObject TwistSplineNode::aDebugScale;
 
 TwistSplineNode::TwistSplineNode() {}
 TwistSplineNode::~TwistSplineNode() {}
@@ -85,77 +88,83 @@ MStatus TwistSplineNode::initialize() {
 
 	//---------------- Output ------------------
 
-	aOutputSpline = tAttr.create("outputSpline", "outputSpline", TwistSplineData::id);
+	aOutputSpline = tAttr.create("outputSpline", "os", TwistSplineData::id);
 	tAttr.setWritable(false);
 	addAttribute(aOutputSpline);
 
-	aSplineLength = nAttr.create("splineLength", "splineLength", MFnNumericData::kDouble);
+	aSplineLength = nAttr.create("splineLength", "sl", MFnNumericData::kDouble);
 	nAttr.setWritable(false);
 	addAttribute(aSplineLength);
 
+	//--------------- Input -------------------
+
+	aDebugDisplay = nAttr.create("debugDisplay", "dd", MFnNumericData::kBoolean, false);
+	addAttribute(aDebugDisplay);
+	aDebugScale = nAttr.create("debugScale", "ds", MFnNumericData::kDouble, 1.0);
+	addAttribute(aDebugScale);
+
 	//--------------- Array -------------------
 
-	aInTangent = mAttr.create("inTangent", "inTangent");
+	aInTangent = mAttr.create("inTangent", "int");
 	mAttr.setHidden(true);
 	mAttr.setDefault(MMatrix::identity);
 
-	aOutTangent = mAttr.create("outTangent", "outTangent");
+	aOutTangent = mAttr.create("outTangent", "ot");
 	mAttr.setHidden(true);
 	mAttr.setDefault(MMatrix::identity);
 
-	aControlVertex = mAttr.create("controlVertex", "controlVertex");
+	aControlVertex = mAttr.create("controlVertex", "cv");
 	mAttr.setHidden(true);
 	mAttr.setDefault(MMatrix::identity);
 
-	aRestLength = nAttr.create("restLength", "restLength", MFnNumericData::kDouble, 0.0);
-	aLock = nAttr.create("lock", "lock", MFnNumericData::kDouble, 0.0);
+	aParamValue = nAttr.create("paramValue", "pv", MFnNumericData::kDouble, 0.0);
+	aParamWeight = nAttr.create("paramWeight", "pw", MFnNumericData::kDouble, 0.0);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
-	aUseTwist = nAttr.create("useTwist", "useTwist", MFnNumericData::kDouble, 0.0);
+	aTwistValue = uAttr.create("twistValue", "tv", MFnUnitAttribute::kAngle, 0.0);
+	aTwistWeight = nAttr.create("twistWeight", "tw", MFnNumericData::kDouble, 0.0);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
-	aUseOrient = nAttr.create("useOrient", "useOrient", MFnNumericData::kDouble, 0.0);
+	aUseOrient = nAttr.create("useOrient", "uo", MFnNumericData::kDouble, 0.0);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
-	aTwist = uAttr.create("twist", "twist", MFnUnitAttribute::kAngle, 0.0);
 
-	aVertexData = cAttr.create("vertexData", "vertexData");
+	aVertexData = cAttr.create("vertexData", "vd");
 	cAttr.setArray(true);
 	cAttr.addChild(aInTangent); // matrix
 	cAttr.addChild(aControlVertex); // matrix
 	cAttr.addChild(aOutTangent); // matrix
 
-	cAttr.addChild(aRestLength); // float unbounded
-	cAttr.addChild(aLock); // float 0-1
-	cAttr.addChild(aUseTwist); // float 0-1
+	cAttr.addChild(aParamValue); // float unbounded
+	cAttr.addChild(aParamWeight); // float 0-1
+	cAttr.addChild(aTwistWeight); // float 0-1
 	cAttr.addChild(aUseOrient); // float 0-1
-	cAttr.addChild(aTwist); // float unbounded
+	cAttr.addChild(aTwistValue); // float unbounded
 
 	addAttribute(aVertexData);
 
 	attributeAffects(aInTangent, aOutputSpline);
 	attributeAffects(aControlVertex, aOutputSpline);
 	attributeAffects(aOutTangent, aOutputSpline);
-	attributeAffects(aRestLength, aOutputSpline);
-	attributeAffects(aLock, aOutputSpline);
-	attributeAffects(aUseTwist, aOutputSpline);
-	attributeAffects(aTwist, aOutputSpline);
+	attributeAffects(aParamValue, aOutputSpline);
+	attributeAffects(aParamWeight, aOutputSpline);
+	attributeAffects(aTwistWeight, aOutputSpline);
+	attributeAffects(aTwistValue, aOutputSpline);
 	attributeAffects(aUseOrient, aOutputSpline);
 
 	attributeAffects(aInTangent, aSplineLength);
 	attributeAffects(aControlVertex, aSplineLength);
 	attributeAffects(aOutTangent, aSplineLength);
-	
+
 	return MS::kSuccess;
 }
 
 TwistSplineT* TwistSplineNode::getSplineData() const {
 	MStatus stat;
-	MObject thisNode = thisMObject();
 	MObject output;
 
-	// get sentinel plug, causes update
-	MPlug tPlug(thisNode, aOutputSpline);
+	// Getting this plug causes an update
+	MPlug tPlug(thisMObject(), aOutputSpline);
 	tPlug.getValue(output);
 	MFnPluginData outData(output);
 	auto tsd = dynamic_cast<TwistSplineData *>(outData.data());
@@ -183,6 +192,27 @@ MBoundingBox TwistSplineNode::boundingBox() const {
 	return MBoundingBox(MPoint(minx, miny, minz), MPoint(maxx, maxy, maxz));
 }
 
+void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
+	MStatus stat;
+	MObject mobj = thisMObject();
+
+	oDraw = false;
+	oScale = 1.0;
+	if (!mobj.isNull()) {
+		MPlug drawPlug(mobj, aDebugDisplay);
+		if (!drawPlug.isNull()) {
+			drawPlug.getValue(oDraw);
+		}
+
+		MPlug scalePlug(mobj, aDebugScale);
+		if (!scalePlug.isNull()) {
+			scalePlug.getValue(oScale);
+		}
+	}
+	
+}
+
+
 MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 	if (plug == aOutputSpline) {
 		MStatus status;
@@ -202,20 +232,22 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// I'm OK with just looping over the physical indices here
 		// because if it's unconnected, then I don't really care
-		bool gotLocks = false;
+		bool gotLocks = false, gotOris = false;
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto group = inputs.inputValue();
 
-			lockPositions.push_back(group.child(aRestLength).asDouble());
+			lockPositions.push_back(group.child(aParamValue).asDouble());
 
-			double lockIt = group.child(aLock).asDouble();
+			double lockIt = group.child(aParamWeight).asDouble();
 			lockVals.push_back(lockIt);
-
-			twistLock.push_back(group.child(aUseTwist).asDouble());
-			userTwist.push_back(group.child(aTwist).asDouble());
-			orientLock.push_back(group.child(aUseOrient).asDouble());
-
 			if (lockIt > 0.0) gotLocks = true;
+
+			twistLock.push_back(group.child(aTwistWeight).asDouble());
+			userTwist.push_back(group.child(aTwistValue).asDouble());
+
+			double oriIt = group.child(aUseOrient).asDouble();
+			orientLock.push_back(oriIt);
+			if (oriIt > 0.0) gotOris = true;
 
 			if (i > 0) {
 				// Ignore the tangent data for the first vertex
@@ -238,7 +270,8 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		if (!gotLocks && !lockVals.empty())
 			lockVals[0] = 1.0;
 
-		// We *ALWAYS* orient lock the first vertex. It's what the entire spline is based off of
+		// We *ALWAYS* orient lock the first vertex. It's what the entire spline is based on
+		// Maybe there's a better way? Look into that sometime
 		orientLock[0] = 1.0;
 
 		// Output Data Handles
@@ -354,25 +387,9 @@ bool TwistSplineDrawOverride::isBounded(const MDagPath& /*objPath*/, const MDagP
 MBoundingBox TwistSplineDrawOverride::boundingBox(
 		const MDagPath& objPath,
 		const MDagPath& cameraPath) const {
-
-	TwistSplineT* ts = tsn->getSplineData();
-	MPointArray pts = ts->getVerts();
-
-	double minx, miny, minz, maxx, maxy, maxz;
-	minx = miny = minz = std::numeric_limits<double>::max();
-	maxx = maxy = maxz = std::numeric_limits<double>::min();
-
-	for (unsigned i = 0; i < pts.length(); ++i) {
-		MPoint &pt = pts[i];
-		minx = pt[0] < minx ? pt[0] : minx;
-		miny = pt[1] < miny ? pt[1] : miny;
-		minz = pt[2] < minz ? pt[2] : minz;
-		maxx = pt[0] > maxx ? pt[0] : maxx;
-		maxy = pt[1] > maxy ? pt[1] : maxy;
-		maxz = pt[2] > maxz ? pt[2] : maxz;
-	}
-	return MBoundingBox(MPoint(minx, miny, minz), MPoint(maxx, maxy, maxz));
+	return tsn->boundingBox();
 }
+
 
 // Called by Maya each time the object needs to be drawn.
 MUserData* TwistSplineDrawOverride::prepareForDraw(
@@ -380,41 +397,42 @@ MUserData* TwistSplineDrawOverride::prepareForDraw(
 		const MDagPath& cameraPath,
 		const MHWRender::MFrameContext& frameContext,
 		MUserData* oldData) {
+	MStatus status;
 	// Any data needed from the Maya dependency graph must be retrieved and cached in this stage.
-	// There is one cache data for each drawable instance, if it is not desirable to allow Maya to handle data
-	// caching, simply return null in this method and ignore user data parameter in draw callback method.
-	// e.g. in this sample, we compute and cache the data for usage later when we create the 
-	// MUIDrawManager to draw the twistspline in method addUIDrawables().
 	TwistSplineDrawData* data = dynamic_cast<TwistSplineDrawData*>(oldData);
 	if (!data) data = new TwistSplineDrawData();
 
 	TwistSplineT* ts = tsn->getSplineData();
-
 	data->splinePoints = ts->getPoints();
+	tsn->getDebugDraw(data->debugDraw, data->debugScale);
+	
+	if (data->debugDraw){
+		double scale = data->debugScale;
 
-	MVectorArray &tans = ts->getTangents();
-	data->tangents.setLength(tans.length() * 2);
-	for (size_t i = 0; i < tans.length(); ++i) {
-		MPoint &spi = data->splinePoints[i];
-		data->tangents[2*i] = spi;
-		data->tangents[(2*i) +1] = tans[i] + spi;
-	}
+		MVectorArray &tans = ts->getTangents();
+		data->tangents.setLength(tans.length() * 2);
+		for (size_t i = 0; i < tans.length(); ++i) {
+			MPoint &spi = data->splinePoints[i];
+			data->tangents[2*i] = spi;
+			data->tangents[(2*i) +1] = scale * tans[i] + spi;
+		}
 
-	MVectorArray &norms = ts->getNormals();
-	data->normals.setLength(norms.length() * 2);
-	for (size_t i = 0; i < norms.length(); ++i) {
-		MPoint &spi = data->splinePoints[i];
-		MVector &nn = norms[i];
-		data->normals[2 * i] = spi;
-		data->normals[(2 * i) + 1] = nn + spi;
-	}
+		MVectorArray &norms = ts->getNormals();
+		data->normals.setLength(norms.length() * 2);
+		for (size_t i = 0; i < norms.length(); ++i) {
+			MPoint &spi = data->splinePoints[i];
+			MVector &nn = norms[i];
+			data->normals[2 * i] = spi;
+			data->normals[(2 * i) + 1] = scale * nn + spi;
+		}
 
-	MVectorArray &binorms = ts->getBinormals();
-	data->binormals.setLength(binorms.length() * 2);
-	for (size_t i = 0; i < binorms.length(); ++i) {
-		MPoint &spi = data->splinePoints[i];
-		data->binormals[2 * i] = spi;
-		data->binormals[(2 * i) + 1] = binorms[i] + spi;
+		MVectorArray &binorms = ts->getBinormals();
+		data->binormals.setLength(binorms.length() * 2);
+		for (size_t i = 0; i < binorms.length(); ++i) {
+			MPoint &spi = data->splinePoints[i];
+			data->binormals[2 * i] = spi;
+			data->binormals[(2 * i) + 1] = scale * binorms[i] + spi;
+		}
 	}
 	
 	// get correct color based on the state of object, e.g. active or dormant
@@ -440,17 +458,17 @@ void TwistSplineDrawOverride::addUIDrawables(
 
 	drawManager.setDepthPriority(MHWRender::MRenderItem::sActiveLineDepthPriority);
 	drawManager.lineStrip(data->splinePoints, draw2D);
-# if 0
-	drawManager.setColor(MColor(.5, 0, 0));
-	drawManager.lineList(data->tangents, draw2D);
 
-	drawManager.setColor(MColor(0, 0, .5));
-	drawManager.lineList(data->binormals, draw2D);
+	if (data->debugDraw){
+		drawManager.setColor(MColor(.5, 0, 0));
+		drawManager.lineList(data->tangents, draw2D);
 
-	drawManager.setColor(MColor(0, .5, 0));
-	drawManager.lineList(data->normals, draw2D);
-# endif
+		drawManager.setColor(MColor(0, 0, .5));
+		drawManager.lineList(data->binormals, draw2D);
 
+		drawManager.setColor(MColor(0, .5, 0));
+		drawManager.lineList(data->normals, draw2D);
+	}
 	drawManager.endDrawable();
 }
 

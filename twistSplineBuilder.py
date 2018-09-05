@@ -111,11 +111,11 @@ def buildTwistSpline(pfx, cvs, aoTans, aiTans, maxParam):
             cmds.connectAttr("{}.worldMatrix[0]".format(aiTans[i-1]), "{}.vertexData[{}].outTangent".format(spline, i))
             cmds.connectAttr("{}.worldMatrix[0]".format(aoTans[i-1]), "{}.vertexData[{}].inTangent".format(spline, i))
         cmds.connectAttr("{}.worldMatrix[0]".format(cvs[i]), "{}.vertexData[{}].controlVertex".format(spline, i))
-        cmds.setAttr("{}.vertexData[{}].restLength".format(spline, i), (i*maxParam) / (numCVs-1.0))
+        cmds.setAttr("{}.vertexData[{}].paramValue".format(spline, i), (i*maxParam) / (numCVs-1.0))
 
-    cmds.setAttr("{}.vertexData[{}].lock".format(spline, 0), 1.0)
-    cmds.setAttr("{}.vertexData[{}].useTwist".format(spline, 0), 1.0)
-    cmds.setAttr("{}.vertexData[{}].lock".format(spline, numCVs-1), 1.0)
+    cmds.setAttr("{}.vertexData[{}].paramWeight".format(spline, 0), 1.0)
+    cmds.setAttr("{}.vertexData[{}].twistValue".format(spline, 0), 1.0)
+    cmds.setAttr("{}.vertexData[{}].twistWeight".format(spline, numCVs-1), 1.0)
 
     return spline
 

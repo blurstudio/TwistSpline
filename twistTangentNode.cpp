@@ -274,7 +274,7 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MVector preNorm = preLeg / preLegLen;
 		MVector postNorm = nextLeg / nextLegLen;
 		double dot = preNorm * postNorm;
-		if (abs(dot) == 1.0 || preLegLen == 0.0) { // Linear case
+		if (abs(dot) >= 0.999999999 || preLegLen == 0.0) { // Linear case
 			smo = nextLeg / 3.0;
 		}
 		else { // Nonlinear
@@ -335,10 +335,10 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MVector result;
 		MVector lin = (nlt - curTfm).normal() * smo.length();
 
-		result = lin + smooth*(smo - lin);
+		result = (1.0 - smooth) * lin + smooth * smo;
 
 		MVector freeLeg = inTfm - curTfm;
-		result = freeLeg + autoTan*(result - freeLeg); // LERP with the free tangent
+		result = (1.0 - autoTan) * freeLeg + autoTan * result; // LERP with the free tangent
 		result += curTfm;
 
 		MPoint out = MPoint(result) * invParMat;

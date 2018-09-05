@@ -256,17 +256,23 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 				auto itMat = MTransformationMatrix(group.child(aInTangent).asMatrix());
 				points.append(itMat.getTranslation(MSpace::kWorld));
 				quats.push_back(itMat.rotation());
-
-				auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
-				points.append(otMat.getTranslation(MSpace::kWorld));
-				quats.push_back(otMat.rotation());
 			}
+
 			auto cvMat = MTransformationMatrix(group.child(aControlVertex).asMatrix());
 			points.append(cvMat.getTranslation(MSpace::kWorld));
 			quats.push_back(cvMat.rotation());
+
+			auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
+			points.append(otMat.getTranslation(MSpace::kWorld));
+			quats.push_back(otMat.rotation());
+
 			inputs.next();
 		}
 		
+		// Remove the last item from the group. It's the out tangent past the end
+		quats.pop_back();
+		points.remove(points.length() - 1);
+
 		if (!gotLocks && !lockVals.empty())
 			lockVals[0] = 1.0;
 

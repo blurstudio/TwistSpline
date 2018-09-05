@@ -67,6 +67,8 @@ def mkTwistSplineControllers(pfx, numCVs, spread):
         cvs.append(cv)
         tws.append(tw)
 
+    cmds.group(cvs, name="Controls")
+
     # make the tangents and auto-tangents
     oTans = []
     iTans = []
@@ -166,8 +168,10 @@ def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam):
     spline = cmds.createNode("twistSpline", parent=splineTfm, name="{0}TwistSplineShape".format(pfx))
     for i in range(numCVs):
         if i > 0:
-            cmds.connectAttr("{}.worldMatrix[0]".format(aiTans[i-1]), "{}.vertexData[{}].outTangent".format(spline, i))
-            cmds.connectAttr("{}.worldMatrix[0]".format(aoTans[i-1]), "{}.vertexData[{}].inTangent".format(spline, i))
+            cmds.connectAttr("{}.worldMatrix[0]".format(aiTans[i-1]), "{}.vertexData[{}].inTangent".format(spline, i))
+        
+        if i < numCVs - 1:
+            cmds.connectAttr("{}.worldMatrix[0]".format(aoTans[i]), "{}.vertexData[{}].outTangent".format(spline, i))
         cmds.connectAttr("{}.worldMatrix[0]".format(cvs[i]), "{}.vertexData[{}].controlVertex".format(spline, i))
         cmds.connectAttr("{}.Pin".format(cvs[i]), "{}.vertexData[{}].paramWeight".format(spline, i))
         cmds.connectAttr("{}.PinParam".format(cvs[i]), "{}.vertexData[{}].paramValue".format(spline, i))
@@ -222,6 +226,6 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0):
     jPars, joints, group = buildRiders(pfx, spline, numJoints)
 
 cmds.file(force=True, newFile=True)
-makeTwistSpline("spline_A_", 4, 100, 3)
+makeTwistSpline("spline_A_", 4, 100, spread=3)
 #makeTwistSpline("spline_B_", 5, 0, 3)
 

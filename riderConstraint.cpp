@@ -71,6 +71,8 @@ MObject     riderConstraint::aInputSplines;
 	MObject     riderConstraint::aWeight;
 
 MObject     riderConstraint::aParams;
+	MObject     riderConstraint::aParam;
+	MObject     riderConstraint::aParentInverseMatrix;
 
 // output
 MObject     riderConstraint::aOutputs;
@@ -169,10 +171,18 @@ MStatus riderConstraint::initialize() {
 	CHECKSTAT("aInputSplines");
 
 	// input param array
-	aParams = nAttr.create("param", "p", MFnNumericData::kDouble, 0.0, &status);
-	CHECKSTAT("aParams");
-	nAttr.setArray(true);
+	aParam = nAttr.create("param", "p", MFnNumericData::kDouble, 0.0, &status);
+	CHECKSTAT("aParam");
 	nAttr.setKeyable(true);
+
+	aParentInverseMatrix = mAttr.create("parentInverseMatrix", "pim", MFnMatrixAttribute::kDouble, &status);
+	CHECKSTAT("aParentInverseMatrix");
+	mAttr.setHidden(true);
+
+	aParams = cAttr.create("params", "ps", &status);
+	cAttr.setArray(true);
+	cAttr.addChild(aParam);
+	cAttr.addChild(aParentInverseMatrix);
 	status = addAttribute(aParams);
 	CHECKSTAT("aParams");
 
@@ -182,7 +192,6 @@ MStatus riderConstraint::initialize() {
 	mAttr.setHidden(true);
 	mAttr.setWritable(false);
 	mAttr.setStorable(false);
-	CHECKSTAT("aMatrix");
 
 	aTranslateX = nAttr.create("translateX", "tx", MFnNumericData::kDouble, 0.0, &status);
 	CHECKSTAT("aTranslateX");
@@ -249,7 +258,7 @@ MStatus riderConstraint::initialize() {
 	nAttr.setStorable(false);
 
 	aOutputs = cAttr.create("outputs", "out", &status);
-	CHECKSTAT("aInputSplines");
+	CHECKSTAT("aOutputs");
 	cAttr.setHidden(true);
 	cAttr.setArray(true);
 	cAttr.setUsesArrayDataBuilder(true);
@@ -259,7 +268,7 @@ MStatus riderConstraint::initialize() {
 	cAttr.addChild(aScale);
 
 	status = addAttribute(aOutputs);
-	CHECKSTAT("aMatrix");
+	CHECKSTAT("aOutputs");
 
 	attributeAffects(aRotateOrder, aRotate);
 	attributeAffects(aRotateOrder, aRotateX);
@@ -271,6 +280,8 @@ MStatus riderConstraint::initialize() {
 	iobjs.push_back(&aSpline);
 	iobjs.push_back(&aWeight);
 	iobjs.push_back(&aParams);
+	iobjs.push_back(&aParam);
+	iobjs.push_back(&aParentInverseMatrix);
 	iobjs.push_back(&aGlobalOffset);
 	iobjs.push_back(&aUseCycle);
 	iobjs.push_back(&aGlobalSpread);
@@ -363,15 +374,16 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		for (double &w : weights) s += w;
 		for (double &w : weights) w /= s;
 
-
 		// Get the params
 		MArrayDataHandle inPAH = data.inputArrayValue(aParams, &status);
 		std::vector<double> params;
+		std::vector<MMatrix> invParMats;
 
 		ecount = inPAH.elementCount();
 		inPAH.jumpToArrayElement(ecount - 1);
 		possibleMax = inPAH.elementIndex();
-		params.resize(possibleMax+1);
+		params.resize(possibleMax + 1);
+		invParMats.resize(possibleMax + 1);
 		inPAH.jumpToArrayElement(0);
 
 		for (unsigned i = 0; i < ecount; ++i) {
@@ -380,9 +392,16 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				params.resize(realIndex+1);
 				possibleMax = realIndex;
 			}
-			auto inPH = inPAH.inputValue(&status);
+			auto inPGrp = inPAH.inputValue(&status);
+
+			MDataHandle inPH = inPGrp.child(aParam);
 			double inParam = inPH.asDouble();
 			params[realIndex] = inParam;
+
+			MDataHandle inPimH = inPGrp.child(aParentInverseMatrix);
+			MMatrix inPim = inPimH.asMatrix();
+			invParMats[realIndex] = inPim;
+
 			inPAH.next();
 		}
 
@@ -515,8 +534,9 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			MDataHandle rotH = outH.child(aRotate);
 			MDataHandle sclH = outH.child(aScale);
 			
-			MPoint &tran = otrans[pIdx];
-			MMatrix qmat = oquats[pIdx].asMatrix();
+			MMatrix invPar = invParMats[pIdx];
+			MPoint tran = otrans[pIdx] * invPar;
+			MMatrix qmat = oquats[pIdx].asMatrix() * invPar;
 			MPoint &scale = oscales[pIdx];
 
 			// Setting scale doesn't take an mvector or mpoint, only double[3]

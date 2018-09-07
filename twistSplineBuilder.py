@@ -251,7 +251,8 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0):
 	spline = buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam)
 	jPars, joints, group = buildRiders(pfx, spline, master, numJoints)
 
-#cmds.file(force=True, newFile=True)
-makeTwistSpline("spline_A_", 4, 100, spread=3)
-#makeTwistSpline("spline_B_", 5, 0, 3)
+if __name__ == "__main__":
+	#cmds.file(force=True, newFile=True)
+	makeTwistSpline("spline_A_", 4, 100, spread=3)
+	#makeTwistSpline("spline_B_", 5, 0, 3)
 

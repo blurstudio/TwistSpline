@@ -95,7 +95,7 @@ MStatus TwistTangentNode::initialize() {
 	CHECKSTAT("aOutY")
 	aOutZ = nAttr.create("outZ", "oz", MFnNumericData::kDouble, 0.0, &status);
 	CHECKSTAT("aOutZ")
-	aOut = nAttr.create("out", "v", aOutX, aOutY, aOutZ, &status);
+	aOut = nAttr.create("out", "out", aOutX, aOutY, aOutZ, &status);
 	CHECKSTAT("aOut")
 	addAttribute(aOut);
 

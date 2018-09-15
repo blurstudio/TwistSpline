@@ -314,6 +314,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		MStatus status;
 		std::vector<TwistSplineT*> splines;
 		std::vector<double> weights;
+		std::vector<std::pair<TwistSplineT*, double>> splinesWeighted;
 		unsigned ecount, possibleMax;
 
 		// First, get the splines that need computing, and their weight.
@@ -321,36 +322,51 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		ecount = inSpAH.elementCount();
 		inSpAH.jumpToArrayElement(ecount - 1);
 		possibleMax = inSpAH.elementIndex();
-		weights.resize(possibleMax+1);
-		splines.resize(possibleMax+1);
+		splinesWeighted.resize(possibleMax+1);
 		inSpAH.jumpToArrayElement(0);
 
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto inSpGroup = inSpAH.inputValue();
 			unsigned realIndex = inSpAH.elementIndex();
 			if (realIndex > possibleMax) {
-				weights.resize(realIndex+1);
-				splines.resize(realIndex+1);
+				splinesWeighted.resize(realIndex+1);
 				possibleMax = realIndex;
 			}
 
 			MDataHandle inSpwH = inSpGroup.child(aWeight);
 
 			double inSpw = inSpwH.asDouble();
-			if (inSpw <= 0.0) continue;
+			if (inSpw <= 0.0){
+				inSpAH.next();
+				continue;
+			}
 
 			MDataHandle inSpH = inSpGroup.child(aSpline);
 			MPxData* pd = inSpH.asPluginData();
-			if (pd == nullptr) continue;
+			if (pd == nullptr) {
+				inSpAH.next();
+				continue;
+			}
 
 			auto inSplineData = (TwistSplineData *)pd;
 			TwistSplineT *spline = inSplineData->getSpline();
-			if (spline == nullptr) continue;
+			if (spline == nullptr) {
+				inSpAH.next();
+				continue;
+			}
 
-			weights[realIndex] = inSpw;
-			splines[realIndex] = spline;
+			splinesWeighted[realIndex] = std::make_pair(spline, inSpw);
 
 			inSpAH.next();
+		}
+
+		splines.reserve(splinesWeighted.size());
+		weights.reserve(splinesWeighted.size());
+		for (auto &spw : splinesWeighted) {
+			if (spw.first != nullptr) {
+				splines.push_back(spw.first);
+				weights.push_back(spw.second);
+			}
 		}
 
 		if (splines.size() == 0) {
@@ -421,6 +437,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 
 		for (size_t sIdx = 0; sIdx<splines.size(); ++sIdx) {
 			TwistSplineT *spline = splines[sIdx];
+			if (spline == nullptr) continue;
 			const auto &lp = spline->getLockPositions();
 			double mp = lp[lp.size() - 1];
 			const auto &rmp = spline->getRemap();

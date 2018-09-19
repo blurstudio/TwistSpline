@@ -30,7 +30,6 @@ SOFTWARE.
 #include <maya/MFnCompoundAttribute.h>
 #include <maya/MFnMatrixAttribute.h>
 #include <maya/MFnUnitAttribute.h>
-#include <maya/MFNPluginData.h>
 #include <maya/MMatrix.h>
 #include <maya/MFnPluginData.h>
 #include <maya/MTransformationMatrix.h>

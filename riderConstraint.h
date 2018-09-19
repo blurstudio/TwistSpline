@@ -36,36 +36,36 @@ public:
 
 public:
 	// inputs
-	static MObject     riderConstraint::aRotateOrder;
-	static MObject     riderConstraint::aGlobalOffset;
-	static MObject     riderConstraint::aGlobalSpread;
-	static MObject     riderConstraint::aUseCycle;
-	static MObject     riderConstraint::aNormalize;
-	static MObject     riderConstraint::aNormValue;
+	static MObject aRotateOrder;
+	static MObject aGlobalOffset;
+	static MObject aGlobalSpread;
+	static MObject aUseCycle;
+	static MObject aNormalize;
+	static MObject aNormValue;
 	// inputs
-	static MObject     riderConstraint::aInputSplines;
-		static MObject     riderConstraint::aSpline;
-		static MObject     riderConstraint::aWeight;
+	static MObject aInputSplines;
+		static MObject aSpline;
+		static MObject aWeight;
 
-	static MObject     riderConstraint::aParams;
-		static MObject     riderConstraint::aParam;
-		static MObject     riderConstraint::aParentInverseMatrix;
+	static MObject aParams;
+		static MObject aParam;
+		static MObject aParentInverseMatrix;
 
 	// output
-	static MObject     riderConstraint::aOutputs;
-		static MObject     riderConstraint::aOutMat;
-		static MObject     riderConstraint::aTranslate;
-		static MObject     riderConstraint::aTranslateX;
-		static MObject     riderConstraint::aTranslateY;
-		static MObject     riderConstraint::aTranslateZ;
-		static MObject     riderConstraint::aRotate;
-		static MObject     riderConstraint::aRotateX;
-		static MObject     riderConstraint::aRotateY;
-		static MObject     riderConstraint::aRotateZ;
-		static MObject     riderConstraint::aScale;
-		static MObject     riderConstraint::aScaleX;
-		static MObject     riderConstraint::aScaleY;
-		static MObject     riderConstraint::aScaleZ;
+	static MObject aOutputs;
+		static MObject aOutMat;
+		static MObject aTranslate;
+		static MObject aTranslateX;
+		static MObject aTranslateY;
+		static MObject aTranslateZ;
+		static MObject aRotate;
+		static MObject aRotateX;
+		static MObject aRotateY;
+		static MObject aRotateZ;
+		static MObject aScale;
+		static MObject aScaleX;
+		static MObject aScaleY;
+		static MObject aScaleZ;
 
 	static MTypeId id;
 };

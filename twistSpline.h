@@ -114,7 +114,7 @@ void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Floa
 	// but, so I can 'unsort' them, I'm doing this the annoying way, by index
 	std::vector<size_t> pOrder(params.size());
 	std::iota(pOrder.begin(), pOrder.end(), 0);
-	sort(pOrder.begin(), pOrder.end(), [&v](size_t i1, size_t i2) {return v[i1] < v[i2]; });
+	sort(pOrder.begin(), pOrder.end(), [&params](size_t i1, size_t i2) {return params[i1] < params[i2]; });
 
 	size_t segIdx = 0;
 	segTs.resize(params.size());

@@ -414,7 +414,7 @@ MUserData* TwistSplineDrawOverride::prepareForDraw(
 	if (data->debugDraw){
 		double scale = data->debugScale;
 
-		MVectorArray &tans = ts->getTangents();
+		MVectorArray tans = ts->getTangents();
 		data->tangents.setLength(tans.length() * 2);
 		for (size_t i = 0; i < tans.length(); ++i) {
 			MPoint &spi = data->splinePoints[i];
@@ -422,7 +422,7 @@ MUserData* TwistSplineDrawOverride::prepareForDraw(
 			data->tangents[(2*i) +1] = scale * tans[i] + spi;
 		}
 
-		MVectorArray &norms = ts->getNormals();
+		MVectorArray norms = ts->getNormals();
 		data->normals.setLength(norms.length() * 2);
 		for (size_t i = 0; i < norms.length(); ++i) {
 			MPoint &spi = data->splinePoints[i];
@@ -431,7 +431,7 @@ MUserData* TwistSplineDrawOverride::prepareForDraw(
 			data->normals[(2 * i) + 1] = scale * nn + spi;
 		}
 
-		MVectorArray &binorms = ts->getBinormals();
+		MVectorArray binorms = ts->getBinormals();
 		data->binormals.setLength(binorms.length() * 2);
 		for (size_t i = 0; i < binorms.length(); ++i) {
 			MPoint &spi = data->splinePoints[i];

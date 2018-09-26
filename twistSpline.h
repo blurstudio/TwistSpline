@@ -515,7 +515,8 @@ public:
 // to find where it's even possible to be closer, and turn a closest
 // point lookup into something closer to a binary search.
 
-template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float = double>
+// Float default declared in the class prototype
+template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float>
 class TwistSpline {
 private:
 	std::vector<std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>> segments;

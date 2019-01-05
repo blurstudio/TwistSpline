@@ -267,17 +267,19 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 			inputs.next();
 		}
-		
+
 		// Remove the last item from the group. It's the out tangent past the end
-		quats.pop_back();
-		points.remove(points.length() - 1);
+		if (!quats.empty())
+			quats.pop_back();
+
+		if (points.length() > 0)
+			points.remove(points.length() - 1);
 
 		if (!gotLocks && !lockVals.empty())
 			lockVals[0] = 1.0;
 
-		// We *ALWAYS* orient lock the first vertex. It's what the entire spline is based on
-		// Maybe there's a better way? Look into that sometime
-		orientLock[0] = 1.0;
+		if (!gotOris && !orientLock.empty())
+			orientLock[0] = 1.0;
 
 		// Output Data Handles
 		MDataHandle storageH = data.outputValue(aOutputSpline, &status);
@@ -293,7 +295,8 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		MCHECKERROR(status);
 		TwistSplineT *outSpline = outSplineData->getSpline();
 
-		outSpline->setVerts(points, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
+		//if (points.length() != 0)
+			outSpline->setVerts(points, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
 
         // Testing closest point
         //outSpline->buildKDTree();

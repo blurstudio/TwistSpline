@@ -567,8 +567,13 @@ public:
 		this->lutSteps = old.lutSteps;
 		this->totalLength = old.totalLength;
 		// specifically skipping the kdtree for now. Maybe later
+		size_t numVerts = size(verts);
+		if (numVerts < 2) {
+			segments.clear();
+			return;
+		}
 
-		size_t numSegs = ((size(verts) - 1) / 3);
+		size_t numSegs = ((numVerts - 1) / 3);
 		segments.resize(numSegs);
 		for (size_t i=0; i<numSegs; ++i){
 			std::array<Point*, 4> vv;
@@ -659,7 +664,12 @@ public:
 	}
 
 	void buildSegments() {
-		size_t numSegs = ((size(verts) - 1) / 3);
+		size_t numVerts = size(verts);
+		if (numVerts < 2) {
+			segments.clear();
+			return;
+		}
+		size_t numSegs = ((numVerts - 1) / 3);
 		segments.resize(numSegs);
 		for (size_t i = 0; i < numSegs; ++i) {
 			Vector iNorm;
@@ -710,6 +720,8 @@ public:
 		this->twistLocks = twistLocks;
 		this->orientLocks = orientLocks;
 		buildSegments();
+		if (segments.empty())
+			return;
 
 		std::vector<Float> ulens(1);
 		Float runner = 0;
@@ -731,7 +743,7 @@ public:
 		// first, build the param matrix
 		std::vector<std::array<Float, 3>> mat;
 		size_t len = rv.size();
-		if (len == 1) return;
+		if (len <= 1) return;
 		mat.resize(len);
 		res.resize(len);
 
@@ -771,7 +783,7 @@ public:
 		// first, build the param matrix
 		std::vector<std::array<Float, 3>> mat;
 		size_t len = rv.size();
-		if (len == 1) return;
+		if (len <= 1) return;
 		mat.resize(len);
 		res.resize(len);
 

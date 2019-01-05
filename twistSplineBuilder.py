@@ -23,7 +23,6 @@ SOFTWARE.
 '''
 
 from maya import cmds, OpenMaya
-#cmds.loadPlugin("TwistSpline.mll")
 
 # Naming Convention
 DFM_ORG_FMT = "Org_X_X_{0}Jnts" # Deformer Organizer
@@ -180,7 +179,7 @@ def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
 	"""
 
 	# Make bases for the controllers
-	cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl = _mkMasterHarbieControllers()
+	cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl = _mkMasterControllers()
 
 	master = cmds.duplicate(masterCtrl, name=MASTER_FMT.format(pfx))[0]
 	cmds.addAttr(master, longName="Offset", attributeType='double', defaultValue=0.0)
@@ -385,10 +384,10 @@ def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=False):
 			cmds.connectAttr("{0}.output".format(adL), "{}.vertexData[{}].paramValue".format(spline, u), f=True)
 		else:
 			cmds.connectAttr("{}.PinParam".format(cvs[i]), "{}.vertexData[{}].paramValue".format(spline, u))
+			cmds.setAttr("{}.PinParam".format(cvs[i]), (u * maxParam) / (usedCVs - 1.0))
 
 		cmds.connectAttr("{}.UseTwist".format(tws[i]), "{}.vertexData[{}].twistWeight".format(spline, u))
 		cmds.connectAttr("{}.rotateX".format(tws[i]), "{}.vertexData[{}].twistValue".format(spline, u))
-		cmds.setAttr("{}.PinParam".format(cvs[i]), (u * maxParam) / (usedCVs - 1.0))
 
 	cmds.setAttr("{}.Pin".format(cvs[0]), 1.0)
 	cmds.setAttr("{}.UseTwist".format(tws[0]), 1.0)
@@ -468,8 +467,13 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed
 	"""
 	if numCVs < 2:
 		raise ValueError("Cannot create a TwistSpline with less than 2 CVs")
+
+	if not cmds.pluginInfo("TwistSpline", query=True, loaded=True):
+		cmds.loadPlugin("TwistSpline")
+
 	if maxParam is None:
 		maxParam = (numCVs - 1)
+
 	maxParam *= 3.0 * spread
 
 	cvs, bfrs, oTans, iTans, aoTans, aiTans, tws, master = mkTwistSplineControllers(pfx, numCVs, spread, closed=closed)
@@ -550,6 +554,8 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 	#curveForm = curveFn.form()
 	curveForm = cmds.getAttr("{0}.form".format(crvShape))
 	isClosed = curveForm > 0 # 1->closed 2->periodic
+	if isClosed:
+		numCVs -= 1
 
 	# Get the point data
 	# I could do it with cmds if I wanted, but I would have to un-flatten the list
@@ -621,7 +627,12 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 
 	# Lock the buffers
 	for bfr in bfrs:
-		for att in "trs":
-			for axis in "xyz":
-				cmds.setAttr("{0}.{1}{2}".format(bfr, att, axis), lock=True)
+		for att in [x+y for x in 'trs' for y in 'xyz']:
+			cmds.setAttr("{0}.{1}".format(bfr, att), lock=True)
+		
+
+def convertSelectedToTwistSpline(pfx, numJoints=10):
+	sel = cmds.ls(sl=True)
+	for s in sel:
+		convertToTwistSpline(pfx, s, numJoints=numJoints)
 

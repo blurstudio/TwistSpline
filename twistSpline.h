@@ -32,7 +32,8 @@ SOFTWARE.
 #include "mpkdtree.h"
 
 
-// Template overrides for possible implementations different from std
+// To make my choice of abstraction work, I have to write wrappers for the template abstractions
+
 template <typename PointArray>
 inline void resize(PointArray &a, unsigned size) {
 	a.resize(size);
@@ -63,9 +64,16 @@ inline Vector cross(const Vector &a, const Vector &b) {
 	return Vector((a[1] * b[2] - a[2] * b[1]), (a[0] * b[2] - a[2] * b[0]), (a[0] * b[1] - a[1] * b[0]));
 }
 
-
-
-// A helper function for quickly finding an index and segment percentage for an input tValue
+/**
+  * A helper function for quickly finding a single index and segment percentage for an input tValue
+  * 
+  * t: The input t-value
+  * samp: A std::vector of floats of t-values
+  * 
+  * segT: The t-value for the found segment. Can be outside the (0, 1) range if the input
+  *       t-value is outside the range of the samp vector.
+  * segIdx: The index of the segment
+  */
 template <typename Float=double>
 void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &segIdx) {
 	// Remap a length T-Value to a param TValue
@@ -103,11 +111,19 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
 			++segIdx;
 		}
 	}
-
 }
 
-
-
+/**
+  * A helper function for quickly finding multiple index and segment percentage for an input tValue
+  * using a sweeping point style algorithm
+  *
+  * params: The input t-values
+  * samp: A std::vector of floats of t-values
+  * 
+  * segT: The t-value for each found segment. Can be outside the (0, 1) range if the input
+  *       t-value is outside the range of the samp vector.
+  * segIdx: The index for each segment
+  */
 template <typename Float = double>
 void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Float> &samp, std::vector<Float> &segTs, std::vector<size_t> &segIdxs) {
 	// The params aren't necessarily sorted, so to do the "merge", I have to sort them first.
@@ -133,22 +149,25 @@ void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Floa
 	}
 }
 
-
-// Prototype
 template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float = double>
 class TwistSpline;
 
-// This class doesn't own the Point objects, they just look at them
-// This class should not do any memory management as it will be
-// completely managed by it's parent TwistSpline instance
+/**
+  * A Spline segment is a 4 vertex cubic bezier spline. Each segment is independent of the others, and
+  * segment interdependency will be handled by a setup or rig.
+  *
+  * This class doesn't own any Point objects, it just references them.
+  * Also, this class should not do any memory management as it will be
+  * completely managed by it's parent TwistSpline instance
+  */
 template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float = double>
 class TwistSplineSegment {
 private:
 	std::array<Point*, 4> verts; // Convenience pointers to the transforms
 	std::array<Quat*, 4> quats; // Pointer to the position/orientation of the verts
 
-	std::array<Vector, 3> d1verts; // first derivative segments
-	std::array<Vector, 2> d2verts; // second derivative segments
+	std::array<Vector, 3> d1verts; // first derivative position segments
+	std::array<Vector, 2> d2verts; // second derivative position segments
 
 	PointArray points; // The point lookup table along the curve
 	VectorArray tangents;
@@ -164,7 +183,17 @@ private:
 	size_t lutSteps;
 
 public:
-	TwistSplineSegment(Point *p0, Point *p1, Point *p2, Point *p3, Quat *q0, Quat *q1, Quat *q2, Quat *q3, const Vector &iNorm, size_t lutSteps) {
+	/**
+	  * Constructor from scratch
+	  * 
+	  * p0, p1, p2, p3: Four pointers to Point objects that are the vertices of the segment
+	  * q0, q1, q2, q3: Four quaternion pointers that define the orientations of along the segment
+	  * s0, s1, s2, s3: Four Point pointers that define the xyz scale values along the segment
+	  */
+	TwistSplineSegment(
+			Point *p0, Point *p1, Point *p2, Point *p3,
+			Quat *q0, Quat *q1, Quat *q2, Quat *q3,
+			const Vector &iNorm, size_t lutSteps) {
 		verts[0] = p0; verts[1] = p1; verts[2] = p2; verts[3] = p3;
 		quats[0] = q0; quats[1] = q1; quats[2] = q2; quats[3] = q3;
 		this->iNorm = iNorm;
@@ -185,6 +214,10 @@ public:
 		buildLut();
 	}
 
+	/**
+	  * Almost-Copy Constructor. The parent TwistSpline will have already copied the input points
+	  * so instead of re-copying them, I take them as inputs to this constructor.
+	  */
 	TwistSplineSegment(TwistSplineSegment const &old, std::array<Point*, 4> &verts, std::array<Quat*, 4> &quats){
 		this->d1verts = old.d1verts;
 		this->d2verts = old.d2verts;
@@ -205,17 +238,21 @@ public:
 
 	~TwistSplineSegment() {}
 
+	/**
+	  * Get access to the internal data of the spline segment
+	  */
+	VectorArray& getUnits() { return units; }
 	size_t getLutSteps() { return lutSteps; }
 	PointArray& getPoints() { return points; }
 	VectorArray& getTangents() { return tangents; }
 	VectorArray& getRawNormals() { return rnormals; }
-	VectorArray& getRawBinormals() { return rbinormals; }
 	VectorArray& getTwistNormals() { return tnormals; }
+	VectorArray& getRawBinormals() { return rbinormals; }
 	VectorArray& getTwistBinormals() { return tbinormals; }
 	std::vector<Float>& getTwistVals() { return twistVals; }
-
-	VectorArray& getUnits() { return units; }
 	std::vector<Float>& getSampleLengths() { return sampleLengths; }
+
+	/// Get the arc-length of the spline
 	Float getLength() const {
 		size_t ss = sampleLengths.size();
 		if (ss) {
@@ -224,6 +261,7 @@ public:
 		return 0.0;
 	}
 
+	/// Mathematically compute the Point at a given t-value
 	Point compute(Float t) const {
 		if (t <= 0.0) return *(verts[0]);
 		if (t >= 1.0) return *(verts[3]);
@@ -236,6 +274,7 @@ public:
 		return a * (*verts[0]) + b * (*verts[1]) + c * (*verts[2]) + d * (*verts[3]);
 	}
 
+	/// Mathematically compute the Tangent at a given t-value
 	Vector tangent(Float t) const {
 		if (t <= 0.0) return d1verts[0];
 		if (t >= 1.0) return d1verts[2];
@@ -248,29 +287,25 @@ public:
 		return a * d1verts[0] + b * d1verts[1] + c * d1verts[2];
 	}
 
-
+	/// Like projection except you get the perpendicular component of the vector
 	Vector rejectNormal(const Vector &onto, const Vector &n) const {
-		// This is the only normal we need to calculate 99% of the time
-		// Get the -y axis, then reject it onto the first derivative
 		return normalized<Vector, Float>(n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto));
 	}
 
+	/// Reject the first tangent
 	Vector rejectInitialNormal(const Vector &n) const {
-		// This is the only normal we need to calculate 99% of the time
-		// Get the -y axis, then reject it onto the first derivative
 		return rejectNormal(tangent(0.0), n);
 	}
 
+	/// Get the initial normal of the spline
 	Vector initialNormal() const {
-		// This is the only normal we need to calculate 99% of the time
-		// Get the -y axis, then reject it onto the first derivative
 		Vector y = Vector(0.0, 1.0, 0.0);
 		Vector n = y.rotateBy(*(quats[0]));
 		return rejectInitialNormal(n);
 	}
 
+	/// Get the angle between the last normal and the y-axis of the last CV
 	Float postAngle() const {
-		// Get the angle between the last normal and the y-axis of the last CV
 		Vector y = Vector(0.0, 1.0, 0.0);
 		Vector n = y.rotateBy(*(quats[3]));
 		const Vector &tLast = tangents[lutSteps];
@@ -288,6 +323,7 @@ public:
 		return angle;
 	}
 
+	/// Build the xyz first and second derivatives of the spline
 	void buildDverts() {
 		for (size_t i = 0; i < 3; ++i)
 			d1verts[i] = 3 * (*(verts[i + 1]) - (*(verts[i])));
@@ -296,16 +332,28 @@ public:
 			d2verts[i] = 2 * (d1verts[i + 1] - d1verts[i]);
 	}
 
-	void buildLut() {
-		/////////////////////////////////////////////////////////////
-		// Fancy math transforms the evaluation of a bernstein polynomial into evaluation of a finite Taylor Series
-		// Which means (in this case) that we can pre-compute a bunch of stuff and make our loop nothing but some additions
-		//
-		// The intuition of this algorithm:
-		// The der3 value is some constant, and to step between der2 values, you add (der3 * stepLength)
-		// So it follows that stepping to der1 values is just some linear function of the der2 values
-		// Same with the output. There's complicated proof, but I think of it like forces pulling each other around
+	/**
+	  * Calculate a lookup table for some given points
+	  * Fancy math transforms the evaluation of a bernstein polynomial into evaluation of a finite Taylor Series
+	  * Which means (in this case) that we can pre-compute a bunch of stuff and make our loop nothing but some additions
+	  *
+	  * The intuition of this algorithm:
+	  * The der3 value is some constant, and to step between der2 values, you add (der3 * stepLength)
+	  * So it follows that stepping to der1 values is just some linear function of the der2 values
+	  * Same with the output. There's complicated proof, but I think of it like forces pulling each other around
+	  */
 
+	/**
+	  * Then compute the rnormals, rbinormals, and arc-length
+	  * Algorithm taken from "Computation of Rotation Minimizing Frames"
+	  * by W. Wang et. al.
+	  * This is called the "Double Refleciton Method". It takes one frame
+	  * Reflects it to the next sampled position, then reflects it again
+	  * so that the reflected tangent matches the computed one. The resulting
+	  * up-vector is a surprisingly good approximation of the true RMF
+	  */
+	
+	void buildLut() {
 		// Do the pre-calculations
 		Vector a = (*(verts[3])) - 3 * (*(verts[2])) + 3 * (*(verts[1])) - (*(verts[0]));
 		Vector b = 3 * (*(verts[2])) - 6 * (*(verts[1])) + 3 * (*(verts[0]));
@@ -340,21 +388,12 @@ public:
 			tangents[i] = normalized<Vector, Float>(tan);
 		}
 
-		/////////////////////////////////////////////////////////////
 		// Now compute the rnormals, rbinormals, and arc-length
-		// Algorithm taken from "Computation of Rotation Minimizing Frames"
-		// by W. Wang et. al.
-		// This is called the "Double Refleciton Method". It takes one frame
-		// Reflects it to the next sampled position, then reflects it again
-		// so that the reflected tangent matches the computed one. The resulting
-		// up-vector is a surprisingly good approximation of the true RMF
-
 		rnormals[0] = rejectInitialNormal(iNorm);
 		rbinormals[0] = cross(tangents[0], rnormals[0]);
 		sampleLengths[0] = 0.0;
 
 		// A chunk of this loop could be parallelized
-		// but that might not play well with maya's parallel DAG evaluation
 		for (size_t i = 0; i < lutSteps; i++) {
 			Vector v1 = points[i + 1] - points[i];
 			Float v12 = dot<Vector, Float>(v1, v1);
@@ -382,14 +421,46 @@ public:
 	}
 
 
+	/**
+	  * Get the matrix at the given parameter based on the TWISTED normals and binormals
+	  * rawT: The input t-value
+	  * tan: The tangent output
+	  * norm: The normal output
+	  * binorm: The binormal output
+	  * tran: The position output
+	  * scl: The scale output
+	  * twist: The twist output
+	  */
 	void twistedMatrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist) const {
 		matrixAtParam(rawT, tan, norm, binorm, tran, scl, twist, tnormals, tbinormals);
 	}
 
+	/**
+	  * Get the matrix at the given parameter based on the UN-TWISTED normals and binormals
+	  * rawT: The input t-value
+	  * tan: The tangent output
+	  * norm: The normal output
+	  * binorm: The binormal output
+	  * tran: The position output
+	  * scl: The scale output
+	  * twist: The twist output
+	  */
 	void rawMatrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist) const {
 		matrixAtParam(rawT, tan, norm, binorm, tran, scl, twist, rnormals, rbinormals);
 	}
 
+	/**
+	  * Get the matrix at the given parameter based on the given LUT's
+	  * rawT: The input t-value
+	  * tan: The tangent output
+	  * norm: The normal output
+	  * binorm: The binormal output
+	  * tran: The position output
+	  * scl: The scale output
+	  * twist: The twist output
+	  * normals: The input normals LUT
+	  * binormals: The input binormals LUT
+	  */
 	void matrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist, const VectorArray &normals, const VectorArray &binormals) const {
 		// rawT is 0-1 normalized length
 		// lenT is unnormalized length
@@ -483,6 +554,10 @@ public:
 		scl = Point(1.0, 1.0, 1.0); // TODO
 	}
 
+	/**
+	  * Apply the twist values around the tangent vectors
+	  * linearly interpolating between startAngle and endAngle
+	  */
 	void applyTwist(Float startAngle, Float endAngle){ // inRadians
 		resize(tnormals, size(rnormals));
 		resize(tbinormals, size(rbinormals));
@@ -497,11 +572,15 @@ public:
 			const Vector &y = rbinormals[i];
 			const Vector &n = tangents[i];
 
-			// Everything should already be normalized
+			/*
+				Everything should already be normalized
+				dot(n, x) is 0 b/c the norm and binorm are perpendicular
+				and I've already calculated cross(n, x) as the binormal
+				so I don't need to do this part:
 			//Float ca = cos(angle);
 			//Float sa = sin(angle);
 			//tnormals[i] = x * ca + n * dot<Vector, Float>(n, x) * (1 - ca) + cross(x, n) * sa;
-			// dot(n, x) is 0 b/c they're perpendicular, and I've already got cross(n, x) as the binormal
+			*/
 			tnormals[i] = x * cos(angle) + y * sin(angle);
 			tbinormals[i] = cross(n, tnormals[i]);
 		}
@@ -553,7 +632,7 @@ public:
 	
 
 
-	// copy-ish constructor
+	/// Copy constructor 
 	TwistSpline(TwistSpline const &old){
 		this->verts = old.verts;
 		this->quats = old.quats;
@@ -586,7 +665,8 @@ public:
 		}
 	}
 
-	PointArray getPoints()const {
+	/// Get the entire point lookup table
+	PointArray getPoints() const {
 		PointArray pLut;
 		resize(pLut, segments.size() * (lutSteps + 1));
 		size_t c = 0;
@@ -598,7 +678,9 @@ public:
 		}
 		return pLut;
 	}
-	VectorArray getTangents()const {
+
+	/// Get the entire tangent lookup table
+	VectorArray getTangents() const {
 		VectorArray pLut;
 		resize(pLut, segments.size() * (lutSteps + 1));
 		size_t c = 0;
@@ -610,7 +692,9 @@ public:
 		}
 		return pLut;
 	}
-	VectorArray getNormals()const {
+
+	/// Get the entire normal lookup table
+	VectorArray getNormals() const {
 		VectorArray pLut;
 		resize(pLut, segments.size() * (lutSteps + 1));
 		size_t c = 0;
@@ -622,7 +706,9 @@ public:
 		}
 		return pLut;
 	}
-	VectorArray getBinormals()const {
+
+	/// Get the entire binormal lookup table
+	VectorArray getBinormals() const {
 		VectorArray pLut;
 		resize(pLut, segments.size() * (lutSteps + 1));
 		size_t c = 0;
@@ -634,7 +720,9 @@ public:
 		}
 		return pLut;
 	}
-	VectorArray getUnits()const {
+
+	/// Get the entire unit closest-point-helper lookup table
+	VectorArray getUnits() const {
 		VectorArray pLut;
 		resize(pLut, segments.size() * lutSteps);
 		size_t c = 0;
@@ -646,7 +734,9 @@ public:
 		}
 		return pLut;
 	}
-	std::vector<Float> getSampleLengths()const {
+
+	/// Get the entire arclength lookup table
+	std::vector<Float> getSampleLengths() const {
 		std::vector<Float> pLut;
 		resize(pLut, segments.size() * lutSteps);
 		size_t c = 0;
@@ -659,10 +749,12 @@ public:
 		return pLut;
 	}
 
+	/// Clear the closest point lookup kd-tree
 	void clearKDTree() {
 		if (kdTree) delete kdTree;
 	}
 
+	/// Build the internal segment objects
 	void buildSegments() {
 		size_t numVerts = size(verts);
 		if (numVerts < 2) {
@@ -704,6 +796,16 @@ public:
 		}
 	}
 
+	/** Let the user set the input values
+	  * verts: All the vertices for the spline
+	  * quats: All the orientations of the vertices
+	  * scales: All the scales of the vertices (TODO)
+	  * lockPositions: The parameters that each vertex would get locked to
+	  * lockValues: The 0-1 percentages of how locked each vertex is in parametrization
+	  * userTwists: The twist values given by the user
+	  * twistLocks: The 0-1 percentages of how much to use the given twist
+	  * orientLocks: The 0-1 percentages of how much to use the quaternions over the RMF matrices
+	  */
 	void setVerts(
 			const PointArray &verts,
 			const QuatArray &quats,
@@ -735,6 +837,12 @@ public:
 		solveTwist();
 	}
 
+
+	/**
+	  * Solve the locks of a parameter of the spline
+	  * Build a tridiagonal matrix that represents each vertex param as a relation to its neighbor params
+	  * Then solve it
+	  */
 	void solveParamMatrix(
 			const std::vector<Float> &rv /*restVals*/,
 			const std::vector<Float> &cv /*currentVals*/,
@@ -775,6 +883,11 @@ public:
 		solveTridiagonalMatrix(mat, res);
 	}
 
+	/**
+	  * Solve the locks of a parameter of the spline
+	  * Build a tridiagonal matrix that represents each vertex twist as a relation to its neighbor twists
+	  * Twists are handled differently from other parameters
+	  */
 	void solveTwistParamMatrix(
 			const std::vector<Float> &rv /*restVals*/,
 			const std::vector<Float> &cv /*currentVals*/,
@@ -814,11 +927,13 @@ public:
 		solveTridiagonalMatrix(mat, res);
 	}
 
-	static void solveTridiagonalMatrix(std::vector<std::array<Float, 3>> &mat, std::vector<Float> &res) {
-		// Solve a tridiagonal matrix in linear time.
-		// If you set up parameter values in a specific way, they can be thought of as a matrix
-		// That only has numbers along the 3 most central diagonals, which can be solved efficiently
 
+	/**
+	  * Solve a tridiagonal matrix in linear time
+	  * If you set up parameter values in a specific way, they can be thought of as a matrix
+	  * That only has numbers along the 3 most central diagonals, which can be solved efficiently
+	  */
+	static void solveTridiagonalMatrix(std::vector<std::array<Float, 3>> &mat, std::vector<Float> &res) {
 		// Run the first special case substitution
 		mat[0][2] = mat[0][2] / mat[0][1];
 		res[0] = res[0] / mat[0][1];
@@ -835,6 +950,7 @@ public:
 		}
 	}
 
+	/// Build the KD-Tree for closest point lookup
 	void buildKDTree() {
 		// Only need the units for building the kdtree. No reason to build them
 		// outside of this method
@@ -872,6 +988,7 @@ public:
 		kdTree = KDNode<Point, Vector, Float>::split(pLut, lines, maxBounds, minBounds);
 	}
 
+	/// Get the closest point to a given sample
 	Point getClosestPoint(const Point &q) const {
 		Point closest;
 		Float curD2 = std::numeric_limits<Float>::max();
@@ -880,10 +997,12 @@ public:
 		return closest;
 	}
 
+	/// Get the closest parameter to the given sample. Could be more optimal
 	Float getClosestParam(const Point &q) const {
 		return 0.0; // TODO
 	}
 
+	/// Get the matrix at a given parameter. Specify whether to use the twist values or not
 	void matrixAtParam(Float t, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist, bool twisted) const {
 		// Return the matrix for the given t-value
 		// map the arc-length t-value through the remap vector
@@ -899,8 +1018,7 @@ public:
 			segments[segIdx]->rawMatrixAtParam(segT, tan, norm, binorm, tran, scl, twist);
 	}
 
-
-
+	/// Get the matrices at multiple parameters
 	void matricesAtParams(const std::vector<Float> &params,
 			VectorArray &tans, VectorArray &norms, VectorArray &binorms,
 			PointArray &trans, PointArray &scls, std::vector<Float> &twists, bool twisted) {
@@ -935,12 +1053,8 @@ public:
 
 	}
 
-
-
-
+	/// Solve the twist parameters and apply the twist to the segments
 	void solveTwist() {
-		// Get a running value of the lengths
-		
 		std::vector<Float> segLens(segments.size() + 1);
 		std::vector<Float> orientVals(segments.size() + 1);
 		for (size_t i=0; i<segments.size(); ++i){

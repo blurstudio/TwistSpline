@@ -33,7 +33,6 @@ SOFTWARE.
 
 
 // To make my choice of abstraction work, I have to write wrappers for the template abstractions
-
 template <typename PointArray>
 inline void resize(PointArray &a, unsigned size) {
 	a.resize(size);
@@ -63,6 +62,14 @@ template <typename Vector>
 inline Vector cross(const Vector &a, const Vector &b) {
 	return Vector((a[1] * b[2] - a[2] * b[1]), (a[0] * b[2] - a[2] * b[0]), (a[0] * b[1] - a[1] * b[0]));
 }
+
+/// Like projection except you get the perpendicular component of the vector
+template <typename Vector, typename Float=double>
+inline Vector reject(const Vector &onto, const Vector &n) {
+	return normalized<Vector, Float>(n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto));
+}
+
+
 
 /**
   * A helper function for quickly finding a single index and segment percentage for an input tValue
@@ -149,8 +156,11 @@ void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Floa
 	}
 }
 
-template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float = double>
-class TwistSpline;
+
+
+
+
+
 
 /**
   * A Spline segment is a 4 vertex cubic bezier spline. Each segment is independent of the others, and
@@ -287,14 +297,9 @@ public:
 		return a * d1verts[0] + b * d1verts[1] + c * d1verts[2];
 	}
 
-	/// Like projection except you get the perpendicular component of the vector
-	Vector rejectNormal(const Vector &onto, const Vector &n) const {
-		return normalized<Vector, Float>(n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto));
-	}
-
 	/// Reject the first tangent
 	Vector rejectInitialNormal(const Vector &n) const {
-		return rejectNormal(tangent(0.0), n);
+		return reject<Vector, Float>(tangent(0.0), n);
 	}
 
 	/// Get the initial normal of the spline
@@ -311,7 +316,7 @@ public:
 		const Vector &tLast = tangents[lutSteps];
 		const Vector &bLast = rbinormals[lutSteps];
 		const Vector &fLast = rnormals[lutSteps];
-		Vector cvLast = rejectNormal(tLast, n);
+		Vector cvLast = reject<Vector, Float>(tLast, n);
 
 		Float dd = dot<Vector, Float>(cvLast, fLast);
 		dd = std::max(std::min(dd, 1.0), -1.0);
@@ -342,9 +347,48 @@ public:
 	  * So it follows that stepping to der1 values is just some linear function of the der2 values
 	  * Same with the output. There's complicated proof, but I think of it like forces pulling each other around
 	  */
+	static void computeSplinePoints(const std::array<Point, 4> pts, size_t lutSteps, PointArray &pOut, VectorArray &tOut) {
+		// Do the pre-calculations of the derivative vectors
+		Vector a = (*(pts[3])) - 3 * (*(pts[2])) + 3 * (*(pts[1])) - (*(pts[0]));
+		Vector b = 3 * (*(pts[2])) - 6 * (*(pts[1])) + 3 * (*(pts[0]));
+		Vector c = 3 * (*(pts[1])) - 3 * (*(pts[0]));
+		Vector d = (*(pts[0]));
+
+		// Pre calculate the powers of the step length
+		Float h = 1.0 / (Float)lutSteps;
+		Float h2 = h * h;
+		Float h3 = h2 * h;
+
+		size_t pointSteps = lutSteps + 1;
+
+		// Loop for positions
+		Vector fd = a * h3 + b * h2 + c * h;
+		Vector fd2 = 6 * a*h3 + 2 * b*h2;
+		Vector fd3 = 6 * a*h3;
+		points[0] = *pts[0];
+		for (size_t i = 1; i < pointSteps; i++) {
+			d += fd;
+			fd += fd2;
+			fd2 += fd3;
+			points[i] = d;
+		}
+
+		if (size(tOut)){
+			// loop for tangents
+			Vector tan = 3*(v2 - v1);
+			Vector td = 3 * a*h2 + 2 * b*h;
+			Vector td2 = 6 * a*h2;
+			tangents[0] = normalized<Vector, Float>(tan);
+			for (size_t i = 1; i < pointSteps; i++) {
+				tan += td;
+				td += td2;
+				tangents[i] = normalized<Vector, Float>(tan);
+			}
+		}
+	}
 
 	/**
-	  * Then compute the rnormals, rbinormals, and arc-length
+	  * Then compute the normals, binormals, and arc-length
 	  * Algorithm taken from "Computation of Rotation Minimizing Frames"
 	  * by W. Wang et. al.
 	  * This is called the "Double Refleciton Method". It takes one frame
@@ -352,45 +396,12 @@ public:
 	  * so that the reflected tangent matches the computed one. The resulting
 	  * up-vector is a surprisingly good approximation of the true RMF
 	  */
-	
-	void buildLut() {
-		// Do the pre-calculations
-		Vector a = (*(verts[3])) - 3 * (*(verts[2])) + 3 * (*(verts[1])) - (*(verts[0]));
-		Vector b = 3 * (*(verts[2])) - 6 * (*(verts[1])) + 3 * (*(verts[0]));
-		Vector c = 3 * (*(verts[1])) - 3 * (*(verts[0]));
-		Vector d = (*(verts[0]));
+	static void doubleReflect(const Vector &iNorm, const VectorArray &tangents, size_t lutSteps,
+			VectorArray &normals, VectorArray &binormals,
+			std::vector<Float> &sampleLengths, VectorArray &units) {
 
-		points[0] = *verts[0];
-		Vector tan = tangent(0.0); // only place I ever need the non-normalized tangent
-		tangents[0] = normalized<Vector, Float>(tan);
-
-		Float h = 1.0 / (Float)lutSteps;
-		Float h2 = h * h;
-		Float h3 = h2 * h;
-
-		Vector fd = a * h3 + b * h2 + c * h;
-		Vector fd2 = 6 * a*h3 + 2 * b*h2;
-		Vector fd3 = 6 * a*h3;
-
-		Vector td = 3 * a*h2 + 2 * b*h;
-		Vector td2 = 6 * a*h2;
-
-		// Wonderfully simple loop
-		size_t pointSteps = lutSteps + 1;
-		for (size_t i = 1; i < pointSteps; i++) {
-			d += fd;
-			fd += fd2;
-			fd2 += fd3;
-			points[i] = d;
-
-			tan += td;
-			td += td2;
-			tangents[i] = normalized<Vector, Float>(tan);
-		}
-
-		// Now compute the rnormals, rbinormals, and arc-length
-		rnormals[0] = rejectInitialNormal(iNorm);
-		rbinormals[0] = cross(tangents[0], rnormals[0]);
+		normals[0] = reject<Vector, Float>(tangents[0], iNorm);
+		binormals[0] = cross(tangents[0], normals[0]);
 		sampleLengths[0] = 0.0;
 
 		// A chunk of this loop could be parallelized
@@ -402,8 +413,8 @@ public:
 			Vector v2 = tangents[i + 1] - tLi;
 			Float dv2 = dot<Vector, Float>(v2, v2);
 			if (abs(dv2) < 1.0e-15) {
-				rnormals[i + 1] = rnormals[i];
-				rbinormals[i + 1] = rbinormals[i];
+				normals[i + 1] = normals[i];
+				binormals[i + 1] = binormals[i];
 				continue;
 			}
 			Float c2 = 2.0 / dv2;
@@ -414,12 +425,17 @@ public:
 			units[i] = v1 / len;
 
 			// non-parallelizable Section
-			Vector rLi = rnormals[i] - c1 * dot<Vector, Float>(v1, rnormals[i]) * v1;
-			rnormals[i + 1] = rLi - c2 * dot<Vector, Float>(v2, rLi) * v2;
-			rbinormals[i + 1] = cross(tangents[i + 1], rnormals[i + 1]);
+			Vector rLi = normals[i] - c1 * dot<Vector, Float>(v1, normals[i]) * v1;
+			normals[i + 1] = rLi - c2 * dot<Vector, Float>(v2, rLi) * v2;
+			binormals[i + 1] = cross(tangents[i + 1], normals[i + 1]);
 		}
 	}
 
+	/// Build the entire base lookup table of points and matrices
+	void buildLut() {
+		computeSplinePoints(verts, lutSteps, points, tangents);
+		doubleReflect(iNorm, tangents, lutSteps, rnormals, rbinormals, sampleLengths, units);
+	}
 
 	/**
 	  * Get the matrix at the given parameter based on the TWISTED normals and binormals
@@ -586,6 +602,12 @@ public:
 		}
 	}
 };
+
+
+
+
+
+
 
 
 

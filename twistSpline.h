@@ -69,6 +69,22 @@ inline Vector reject(const Vector &onto, const Vector &n) {
 	return normalized<Vector, Float>(n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto));
 }
 
+template <typename Quat>
+inline Quat qmult(const Quat &q, const Quat &r){
+    return Quat(r[0]*q[0]-r[1]*q[1]-r[2]*q[2]-r[3]*q[3],
+            r[0]*q[1]+r[1]*q[0]-r[2]*q[3]+r[3]*q[2],
+            r[0]*q[2]+r[1]*q[3]+r[2]*q[0]-r[3]*q[1],
+            r[0]*q[3]-r[1]*q[2]+r[2]*q[1]+r[3]*q[0]);
+}
+
+template <typename Vector, typename Quat>
+inline Vector rotateBy(const Vector &vec, const Quat &quat){
+	Quat r(0.0, vec[0], vec[1], vec[2]);
+	Quat c(quat[0], -quat[1], -quat[2], -quat[3]);
+	Quat ret = qmult(qmult(quat, r), c);
+	return Vector(ret[1], ret[2], ret[3]);
+}
+
 
 
 /**
@@ -174,12 +190,16 @@ template <typename PointArray, typename Point, typename VectorArray, typename Ve
 class TwistSplineSegment {
 private:
 	std::array<Point*, 4> verts; // Convenience pointers to the transforms
+	std::array<Point*, 4> sclVerts; // Convenience pointers to the scales
 	std::array<Quat*, 4> quats; // Pointer to the position/orientation of the verts
 
 	std::array<Vector, 3> d1verts; // first derivative position segments
 	std::array<Vector, 2> d2verts; // second derivative position segments
+	std::array<Vector, 3> s1verts; // first derivative scale segments
+	std::array<Vector, 2> s2verts; // second derivative scale segments
 
 	PointArray points; // The point lookup table along the curve
+	PointArray scales; // The scale lookup table along the curve
 	VectorArray tangents;
 	VectorArray rnormals; // Raw normals frame-walked starting from the inorm
 	VectorArray rbinormals;
@@ -202,9 +222,11 @@ public:
 	  */
 	TwistSplineSegment(
 			Point *p0, Point *p1, Point *p2, Point *p3,
+			Point *s0, Point *s1, Point *s2, Point *s3,
 			Quat *q0, Quat *q1, Quat *q2, Quat *q3,
 			const Vector &iNorm, size_t lutSteps) {
 		verts[0] = p0; verts[1] = p1; verts[2] = p2; verts[3] = p3;
+		sclVerts[0] = s0; sclVerts[1] = s1; sclVerts[2] = s2; sclVerts[3] = s3;
 		quats[0] = q0; quats[1] = q1; quats[2] = q2; quats[3] = q3;
 		this->iNorm = iNorm;
 		this->lutSteps = lutSteps;
@@ -212,6 +234,7 @@ public:
 		// resize the point-wise arrays
 		size_t pointSteps = lutSteps + 1;
 		resize(points, pointSteps);
+		resize(scales, pointSteps);
 		resize(tangents, pointSteps);
 		resize(rnormals, pointSteps);
 		resize(rbinormals, pointSteps);
@@ -228,10 +251,13 @@ public:
 	  * Almost-Copy Constructor. The parent TwistSpline will have already copied the input points
 	  * so instead of re-copying them, I take them as inputs to this constructor.
 	  */
-	TwistSplineSegment(TwistSplineSegment const &old, std::array<Point*, 4> &verts, std::array<Quat*, 4> &quats){
+	TwistSplineSegment(TwistSplineSegment const &old, std::array<Point*, 4> &verts, std::array<Point*, 4> &sclVerts, std::array<Quat*, 4> &quats){
 		this->d1verts = old.d1verts;
 		this->d2verts = old.d2verts;
+		this->s1verts = old.s1verts;
+		this->s2verts = old.s2verts;
 		this->points = old.points;
+		this->scales = old.scales;
 		this->tangents = old.tangents;
 		this->rnormals = old.rnormals;
 		this->rbinormals = old.rbinormals;
@@ -244,6 +270,7 @@ public:
 		this->lutSteps = old.lutSteps;
 		this->verts = verts;
 		this->quats = quats;
+		this->sclVerts = sclVerts;
 	}
 
 	~TwistSplineSegment() {}
@@ -254,6 +281,7 @@ public:
 	VectorArray& getUnits() { return units; }
 	size_t getLutSteps() { return lutSteps; }
 	PointArray& getPoints() { return points; }
+	PointArray& getScales() { return scales; }
 	VectorArray& getTangents() { return tangents; }
 	VectorArray& getRawNormals() { return rnormals; }
 	VectorArray& getTwistNormals() { return tnormals; }
@@ -271,48 +299,66 @@ public:
 		return 0.0;
 	}
 
-	/// Mathematically compute the Point at a given t-value
-	Point compute(Float t) const {
-		if (t <= 0.0) return *(verts[0]);
-		if (t >= 1.0) return *(verts[3]);
+	static Point compute(const std::array<Point*, 4> pts, Float t) {
+		if (t <= 0.0) return *(pts[0]);
+		if (t >= 1.0) return *(pts[3]);
 		// When calculating a single t-value, just use the bernstein because the pre-computation is heavier than one step
 		Float mt = 1.0 - t;
 		Float a = mt * mt * mt;
 		Float b = mt * mt * t * 3.0;
 		Float c = mt * t * t * 3.0;
 		Float d = t * t * t;
-		return a * (*verts[0]) + b * (*verts[1]) + c * (*verts[2]) + d * (*verts[3]);
+		return a * (*pts[0]) + b * (*pts[1]) + c * (*pts[2]) + d * (*pts[3]);
 	}
 
-	/// Mathematically compute the Tangent at a given t-value
-	Vector tangent(Float t) const {
-		if (t <= 0.0) return d1verts[0];
-		if (t >= 1.0) return d1verts[2];
+	/// Mathematically compute the Point at a given t-value
+	Point computeTran(Float t) const {
+		return compute(verts, t);
+	}
+
+	/// Mathematically compute the Scale at a given t-value
+	Point computeScale(Float t) const {
+		return compute(sclVerts, t);
+	}
+
+	static Vector computeTangent(const std::array<Vector, 3> &dverts, Float t) {
+		if (t <= 0.0) return dverts[0];
+		if (t >= 1.0) return dverts[2];
 		// When calculating a single t-value, just use the bernstein because the pre-computation is heavier than one step
 		Float mt = 1.0 - t;
 		Float a = mt * mt;
 		Float b = mt * t * 2.0;
 		Float c = t * t;
 
-		return a * d1verts[0] + b * d1verts[1] + c * d1verts[2];
+		return a * dverts[0] + b * dverts[1] + c * dverts[2];
+	}
+
+	/// Mathematically compute the Tangent at a given t-value
+	Vector computeTranTangent(Float t) const {
+		return computeTangent(d1verts, t);
+	}
+
+	/// Mathematically compute the scale tangent at a given t-value
+	Vector computeScaleTangent(Float t) const {
+		return computeTangent(s1verts, t);
 	}
 
 	/// Reject the first tangent
 	Vector rejectInitialNormal(const Vector &n) const {
-		return reject<Vector, Float>(tangent(0.0), n);
+		return reject<Vector, Float>(computeTranTangent(0.0), n);
 	}
 
 	/// Get the initial normal of the spline
 	Vector initialNormal() const {
 		Vector y = Vector(0.0, 1.0, 0.0);
-		Vector n = y.rotateBy(*(quats[0]));
+		Vector n = rotateBy(y, *(quats[0]));
 		return rejectInitialNormal(n);
 	}
 
 	/// Get the angle between the last normal and the y-axis of the last CV
 	Float postAngle() const {
 		Vector y = Vector(0.0, 1.0, 0.0);
-		Vector n = y.rotateBy(*(quats[3]));
+		Vector n = rotateBy(y, *(quats[3]));
 		const Vector &tLast = tangents[lutSteps];
 		const Vector &bLast = rbinormals[lutSteps];
 		const Vector &fLast = rnormals[lutSteps];
@@ -335,6 +381,13 @@ public:
 
 		for (size_t i = 0; i < 2; ++i)
 			d2verts[i] = 2 * (d1verts[i + 1] - d1verts[i]);
+
+		// Also for scales
+		for (size_t i = 0; i < 3; ++i)
+			s1verts[i] = 3 * (*(sclVerts[i + 1]) - (*(sclVerts[i])));
+
+		for (size_t i = 0; i < 2; ++i)
+			s2verts[i] = 2 * (s1verts[i + 1] - s1verts[i]);
 	}
 
 	/**
@@ -347,12 +400,12 @@ public:
 	  * So it follows that stepping to der1 values is just some linear function of the der2 values
 	  * Same with the output. There's complicated proof, but I think of it like forces pulling each other around
 	  */
-	static void computeSplinePoints(const std::array<Point, 4> pts, size_t lutSteps, PointArray &pOut, VectorArray &tOut) {
+	static void computeSplinePoints(const std::array<Point*, 4> pts, size_t lutSteps, PointArray &pOut, VectorArray &tOut) {
 		// Do the pre-calculations of the derivative vectors
-		Vector a = (*(pts[3])) - 3 * (*(pts[2])) + 3 * (*(pts[1])) - (*(pts[0]));
-		Vector b = 3 * (*(pts[2])) - 6 * (*(pts[1])) + 3 * (*(pts[0]));
-		Vector c = 3 * (*(pts[1])) - 3 * (*(pts[0]));
-		Vector d = (*(pts[0]));
+		Vector a = (*pts[3]) - 3 * (*pts[2]) + 3 * (*pts[1]) - (*pts[0]);
+		Vector b = 3 * (*pts[2]) - 6 * (*pts[1]) + 3 * (*pts[0]);
+		Vector c = 3 * (*pts[1]) - 3 * (*pts[0]);
+		Vector d = (*pts[0]);
 
 		// Pre calculate the powers of the step length
 		Float h = 1.0 / (Float)lutSteps;
@@ -365,24 +418,24 @@ public:
 		Vector fd = a * h3 + b * h2 + c * h;
 		Vector fd2 = 6 * a*h3 + 2 * b*h2;
 		Vector fd3 = 6 * a*h3;
-		points[0] = *pts[0];
+		pOut[0] = *pts[0];
 		for (size_t i = 1; i < pointSteps; i++) {
 			d += fd;
 			fd += fd2;
 			fd2 += fd3;
-			points[i] = d;
+			pOut[i] = d;
 		}
 
 		if (size(tOut)){
 			// loop for tangents
-			Vector tan = 3*(v2 - v1);
+			Vector tan = 3*((*pts[1]) - (*pts[0]));
 			Vector td = 3 * a*h2 + 2 * b*h;
 			Vector td2 = 6 * a*h2;
-			tangents[0] = normalized<Vector, Float>(tan);
+			tOut[0] = normalized<Vector, Float>(tan);
 			for (size_t i = 1; i < pointSteps; i++) {
 				tan += td;
 				td += td2;
-				tangents[i] = normalized<Vector, Float>(tan);
+				tOut[i] = normalized<Vector, Float>(tan);
 			}
 		}
 	}
@@ -396,7 +449,7 @@ public:
 	  * so that the reflected tangent matches the computed one. The resulting
 	  * up-vector is a surprisingly good approximation of the true RMF
 	  */
-	static void doubleReflect(const Vector &iNorm, const VectorArray &tangents, size_t lutSteps,
+	static void doubleReflect(const Vector &iNorm, const PointArray &points, const VectorArray &tangents, size_t lutSteps,
 			VectorArray &normals, VectorArray &binormals,
 			std::vector<Float> &sampleLengths, VectorArray &units) {
 
@@ -434,35 +487,9 @@ public:
 	/// Build the entire base lookup table of points and matrices
 	void buildLut() {
 		computeSplinePoints(verts, lutSteps, points, tangents);
-		doubleReflect(iNorm, tangents, lutSteps, rnormals, rbinormals, sampleLengths, units);
-	}
-
-	/**
-	  * Get the matrix at the given parameter based on the TWISTED normals and binormals
-	  * rawT: The input t-value
-	  * tan: The tangent output
-	  * norm: The normal output
-	  * binorm: The binormal output
-	  * tran: The position output
-	  * scl: The scale output
-	  * twist: The twist output
-	  */
-	void twistedMatrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist) const {
-		matrixAtParam(rawT, tan, norm, binorm, tran, scl, twist, tnormals, tbinormals);
-	}
-
-	/**
-	  * Get the matrix at the given parameter based on the UN-TWISTED normals and binormals
-	  * rawT: The input t-value
-	  * tan: The tangent output
-	  * norm: The normal output
-	  * binorm: The binormal output
-	  * tran: The position output
-	  * scl: The scale output
-	  * twist: The twist output
-	  */
-	void rawMatrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist) const {
-		matrixAtParam(rawT, tan, norm, binorm, tran, scl, twist, rnormals, rbinormals);
+		VectorArray _unused;
+		computeSplinePoints(sclVerts, lutSteps, scales, _unused);
+		doubleReflect(iNorm, points, tangents, lutSteps, rnormals, rbinormals, sampleLengths, units);
 	}
 
 	/**
@@ -482,40 +509,46 @@ public:
 		// lenT is unnormalized length
 		// segT is 0-1 param value
 		// t is 0-1 param of a lut segment
-		Float t, segT, lenT = rawT * getLength();
+		Float len = getLength();
+		Float t, segT, lenT = rawT * len;
 		size_t i;
 		linearIndex(lenT, sampleLengths, t, i);
 		segT = (t + i) / lutSteps;
 		if (abs(t) < 1.0e-11) { // t == 0
+			tran = points[i];
+			scl = scales[i];
 			tan = tangents[i];
 			norm = normals[i];
 			binorm = binormals[i];
-			tran = points[i];
 			twist = twistVals[i];
-			scl = Point(1.0, 1.0, 1.0); // TODO
 			return;
 		}
 		if (t < 0.0) {
-			tran = (normalized(tangents[0]) * lenT) + points[0];
+			Vector dv = (dot(d1verts[0], d1verts[0]) < 0.00000000001) ? d1verts[0] : normalized(d1verts[0]);
+			Vector sv = (dot(s1verts[0], s1verts[0]) < 0.00000000001) ? s1verts[0] : normalized(s1verts[0]);
+			tran = (dv * lenT) + points[0];
+			scl = (sv * lenT) + scales[0];
 			tan = tangents[0];
 			norm = normals[0];
 			binorm = binormals[0];
 			twist = twistVals[0];
-			scl = Point(1.0, 1.0, 1.0); // TODO
 			return;
 		}
 		if (t > 0.99999999999) {
-			tran = (normalized(tangents[size(tangents) - 1]) * (lenT - getLength())) + points[size(points) - 1];
+			Vector dv = (dot(d1verts[2], d1verts[2]) < 0.00000000001) ? d1verts[2] : normalized(d1verts[2]);
+			Vector sv = (dot(s1verts[2], s1verts[2]) < 0.00000000001) ? s1verts[2] : normalized(s1verts[2]);
+			tran = (dv * (lenT - len)) + points[size(points) - 1];
+			scl = (sv * (lenT - len)) + scales[size(scales) - 1];
 			tan = tangents[size(tangents) - 1];
 			norm = normals[size(normals) - 1];
 			binorm = tbinormals[size(tbinormals) - 1];
 			twist = twistVals[twistVals.size() - 1];
-			scl = Point(1.0, 1.0, 1.0); // TODO
 			return;
 		}
 
-		tran = compute(segT);
-		tan = normalized(tangent(segT));
+		tran = computeTran(segT);
+		scl = computeScale(segT);
+		tan = normalized(computeTranTangent(segT));
 #if 0
 		// This could be done by lerp+normalization
 		// Bad (can end up over-extrapolating in extreme cases)
@@ -567,7 +600,34 @@ public:
 		auto tw1 = twistVals[i];
 		auto tw2 = twistVals[i + 1];
 		twist = tw1 * (1 - t) + tw2 * t;
-		scl = Point(1.0, 1.0, 1.0); // TODO
+	}
+
+	/**
+	  * Get the matrix at the given parameter based on the TWISTED normals and binormals
+	  * rawT: The input t-value
+	  * tan: The tangent output
+	  * norm: The normal output
+	  * binorm: The binormal output
+	  * tran: The position output
+	  * scl: The scale output
+	  * twist: The twist output
+	  */
+	void twistedMatrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist) const {
+		matrixAtParam(rawT, tan, norm, binorm, tran, scl, twist, tnormals, tbinormals);
+	}
+
+	/**
+	  * Get the matrix at the given parameter based on the UN-TWISTED normals and binormals
+	  * rawT: The input t-value
+	  * tan: The tangent output
+	  * norm: The normal output
+	  * binorm: The binormal output
+	  * tran: The position output
+	  * scl: The scale output
+	  * twist: The twist output
+	  */
+	void rawMatrixAtParam(Float rawT, Vector &tan, Vector &norm, Vector &binorm, Point &tran, Point &scl, Float &twist) const {
+		matrixAtParam(rawT, tan, norm, binorm, tran, scl, twist, rnormals, rbinormals);
 	}
 
 	/**
@@ -601,6 +661,7 @@ public:
 			tbinormals[i] = cross(n, tnormals[i]);
 		}
 	}
+
 };
 
 
@@ -622,6 +683,7 @@ class TwistSpline {
 private:
 	std::vector<std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>> segments;
 	PointArray verts; // all verts, ordered, including tangents
+	PointArray scales; // The scale of each vert
 	QuatArray quats; // The orientations of the verts
 
 	std::vector<Float> lockPositions; // The locking t-values
@@ -641,6 +703,7 @@ public:
 	~TwistSpline() {}
 
 	PointArray getVerts() const { return verts; }
+	PointArray getScaleVerts() const {return scales; }
 	QuatArray getQuats() const { return quats; }
 
 	std::vector<Float> getLockPositions() const { return lockPositions; }
@@ -658,6 +721,7 @@ public:
 	TwistSpline(TwistSpline const &old){
 		this->verts = old.verts;
 		this->quats = old.quats;
+		this->scales = old.scales;
 		this->lockPositions = old.lockPositions;
 		this->lockValues = old.lockValues;
 		this->userTwists = old.userTwists;
@@ -677,12 +741,13 @@ public:
 		size_t numSegs = ((numVerts - 1) / 3);
 		segments.resize(numSegs);
 		for (size_t i=0; i<numSegs; ++i){
-			std::array<Point*, 4> vv;
+			std::array<Point*, 4> vv, ss;
 			std::array<Quat*, 4> qq;
 			vv = {&(verts[3*i]), &(verts[3*i + 1]), &(verts[3*i + 2]), &(verts[3*i + 3])};
+			ss = {&(scales[3*i]), &(scales[3*i + 1]), &(scales[3*i + 2]), &(scales[3*i + 3])};
 			qq = {&(quats[3*i]), &(quats[3*i + 1]), &(quats[3*i + 2]), &(quats[3*i + 3])};
 			segments[i] = std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>(
-				new TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>(*(old.segments[i]), vv, qq)
+				new TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>(*(old.segments[i]), vv, ss, qq)
 			); 
 		}
 	}
@@ -699,6 +764,20 @@ public:
 			}
 		}
 		return pLut;
+	}
+
+	/// Get the entire scale lookup table
+	PointArray getScales() const {
+		PointArray sLut;
+		resize(sLut, segments.size() * (lutSteps + 1));
+		size_t c = 0;
+		for (auto &seg : segments) {
+			auto &pa = seg->getScales();
+			for (size_t j = 0; j < size(pa); ++j) {
+				sLut[c++] = pa[j];
+			}
+		}
+		return sLut;
 	}
 
 	/// Get the entire tangent lookup table
@@ -789,7 +868,7 @@ public:
 			Vector iNorm;
 			if (i == 0) {
 				Vector y = Vector(0.0, 1.0, 0.0);
-				iNorm = y.rotateBy(quats[3 * i]);
+				iNorm = rotateBy(y, quats[3 * i]);
 			}
 			else {
 				const auto &pre = segments[i-1];
@@ -797,20 +876,13 @@ public:
 				Vector d = pre->getRawNormals()[last];
 				Vector a = pre->getTangents()[last];
 				Vector b = normalized(verts[3 * i + 1] - verts[3 * i]);
-				Vector ab = a + b;
-				Float ll = length(ab);
-				Vector n;
-				if (ll == 0.0) {
-					n = b;
-				}
-				else {
-					n = normalized(a + b);
-				}
+				Vector n = (length(a + b) == 0.0) ? b : normalized(a + b);
 				iNorm = d - 2 * dot<Vector, Float>(d, n) * n;
 			}
 			segments[i] = std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>(
 				new TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>(
 					&(verts[3*i]), &(verts[3*i + 1]), &(verts[3*i + 2]), &(verts[3*i + 3]),
+					&(scales[3*i]), &(scales[3*i + 1]), &(scales[3*i + 2]), &(scales[3*i + 3]),
 					&(quats[3*i]), &(quats[3*i + 1]), &(quats[3*i + 2]), &(quats[3*i + 3]),
 					iNorm, lutSteps
 				)
@@ -830,6 +902,7 @@ public:
 	  */
 	void setVerts(
 			const PointArray &verts,
+			const PointArray &scales,
 			const QuatArray &quats,
 			const std::vector<Float> &lockPositions,
 			const std::vector<Float> &lockValues,
@@ -837,6 +910,7 @@ public:
 			const std::vector<Float> &twistLocks,
 			const std::vector<Float> &orientLocks) {
 		this->verts = verts;
+		this->scales = scales;
 		this->quats = quats;
 		this->lockPositions = lockPositions;
 		this->lockValues = lockValues;
@@ -1072,7 +1146,6 @@ public:
 			}
 	
 		}
-
 	}
 
 	/// Solve the twist parameters and apply the twist to the segments

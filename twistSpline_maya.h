@@ -24,6 +24,9 @@ SOFTWARE.
 
 #pragma once
 
+#include <maya/MPoint.h>
+#include <maya/MVector.h>
+#include <maya/MQuaternion.h>
 #include <maya/MPointArray.h>
 #include <maya/MVectorArray.h>
 #include <cmath>
@@ -67,3 +70,15 @@ template <>
 inline MVector cross(const MVector &a, const MVector &b) {
 	return a ^ b;
 }
+
+/// Like projection except you get the perpendicular component of the vector
+template <>
+inline MVector reject(const MVector &onto, const MVector &n){
+	return (n - (((n * onto) / (onto * onto)) * onto)).normal();
+}
+
+template <>
+inline MVector rotateBy(const MVector &vec, const MQuaternion &quat){
+	return vec.rotateBy(quat);
+}
+

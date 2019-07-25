@@ -218,6 +218,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// Get all input Data
 		MPointArray points;
+		MPointArray scales;
 		std::vector<MQuaternion> quats;
 		std::vector<double> lockPositions;
 		std::vector<double> lockVals;
@@ -231,6 +232,8 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// I'm OK with just looping over the physical indices here
 		// because if it's unconnected, then I don't really care
+		double sGet[4];
+		sGet[3] = 1.0;
 		bool gotLocks = false, gotOris = false;
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto group = inputs.inputValue();
@@ -254,15 +257,21 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 				// for conveninece here
 				auto itMat = MTransformationMatrix(group.child(aInTangent).asMatrix());
 				points.append(itMat.getTranslation(MSpace::kWorld));
+				itMat.getScale(sGet, MSpace::kObject);
+				scales.append(MPoint(sGet));
 				quats.push_back(itMat.rotation());
 			}
 
 			auto cvMat = MTransformationMatrix(group.child(aControlVertex).asMatrix());
 			points.append(cvMat.getTranslation(MSpace::kWorld));
+			cvMat.getScale(sGet, MSpace::kObject);
+			scales.append(MPoint(sGet));
 			quats.push_back(cvMat.rotation());
 
 			auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
 			points.append(otMat.getTranslation(MSpace::kWorld));
+			otMat.getScale(sGet, MSpace::kObject);
+			scales.append(MPoint(sGet));
 			quats.push_back(otMat.rotation());
 
 			inputs.next();
@@ -274,6 +283,9 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		if (points.length() > 0)
 			points.remove(points.length() - 1);
+
+		if (scales.length() > 0)
+			scales.remove(scales.length() - 1);
 
 		if (!gotLocks && !lockVals.empty())
 			lockVals[0] = 1.0;
@@ -296,7 +308,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		TwistSplineT *outSpline = outSplineData->getSpline();
 
 		//if (points.length() != 0)
-			outSpline->setVerts(points, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
+			outSpline->setVerts(points, scales, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
 
         // Testing closest point
         //outSpline->buildKDTree();

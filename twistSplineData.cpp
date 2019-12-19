@@ -44,7 +44,6 @@ void TwistSplineData::copy(const MPxData& other) {
 		const TwistSplineData* otherData = (const TwistSplineData*) & other;
 		const TwistSplineT * x = otherData->getSpline();
 		_twistSpline = new TwistSplineT(*x);
-		//_twistSpline->setVerts(x->getVerts(), x->getQuats(), x->getLockPositions(), x->getLockValues(), x->getUserTwists(), x->getTwistLocks(), x->getOrientLocks());
 	}
 	else {
 		//  we need to convert to the other type based on its iff Tag

@@ -186,20 +186,20 @@ MStatus riderConstraint::initialize() {
 	CHECKSTAT("aParams");
 
 	// Output: Matrices
-	aTranslateX = nAttr.create("translateX", "tx", MFnNumericData::kDouble, 0.0, &status);
+	aTranslateX = uAttr.create("translateX", "tx", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aTranslateX");
-	nAttr.setWritable(false);
-	nAttr.setStorable(false);
+	uAttr.setWritable(false);
+	uAttr.setStorable(false);
 
-	aTranslateY = nAttr.create("translateY", "ty", MFnNumericData::kDouble, 0.0, &status);
+	aTranslateY = uAttr.create("translateY", "ty", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aTranslateY");
-	nAttr.setWritable(false);
-	nAttr.setStorable(false);
+	uAttr.setWritable(false);
+	uAttr.setStorable(false);
 
-	aTranslateZ = nAttr.create("translateZ", "tz", MFnNumericData::kDouble, 0.0, &status);
+	aTranslateZ = uAttr.create("translateZ", "tz", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aTranslateZ");
-	nAttr.setWritable(false);
-	nAttr.setStorable(false);
+	uAttr.setWritable(false);
+	uAttr.setStorable(false);
 
 	aTranslate = nAttr.create("translate", "t", aTranslateX, aTranslateY, aTranslateZ, &status);
 	nAttr.setHidden(true);
@@ -267,32 +267,15 @@ MStatus riderConstraint::initialize() {
 	attributeAffects(aRotateOrder, aRotateY);
 	attributeAffects(aRotateOrder, aRotateZ);
 
-	std::vector<MObject *> iobjs, oobjs;
-	iobjs.push_back(&aInputSplines);
-	iobjs.push_back(&aSpline);
-	iobjs.push_back(&aWeight);
-	iobjs.push_back(&aParams);
-	iobjs.push_back(&aParam);
-	iobjs.push_back(&aParentInverseMatrix);
-	iobjs.push_back(&aGlobalOffset);
-	iobjs.push_back(&aUseCycle);
-	iobjs.push_back(&aGlobalSpread);
-	iobjs.push_back(&aNormalize);
-	iobjs.push_back(&aNormValue);
+	std::vector<MObject *> iobjs = {
+		&aInputSplines, &aSpline, &aWeight, &aParams, &aParam, &aParentInverseMatrix,
+		&aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize, &aNormValue
+	};
 
-	oobjs.push_back(&aOutputs);
-	oobjs.push_back(&aTranslate);
-	oobjs.push_back(&aRotate);
-	oobjs.push_back(&aScale);
-	oobjs.push_back(&aTranslateX);
-	oobjs.push_back(&aRotateX);
-	oobjs.push_back(&aScaleX);
-	oobjs.push_back(&aTranslateY);
-	oobjs.push_back(&aRotateY);
-	oobjs.push_back(&aScaleY);
-	oobjs.push_back(&aTranslateZ);
-	oobjs.push_back(&aRotateZ);
-	oobjs.push_back(&aScaleZ);
+	std::vector<MObject *> oobjs = {
+		&aOutputs, &aTranslate, &aRotate, &aScale, &aTranslateX, &aRotateX, &aScaleX,
+		&aTranslateY, &aRotateY, &aScaleY, &aTranslateZ, &aRotateZ, &aScaleZ
+	};
 
 	for (auto &ii : iobjs) {
 		for (auto &oo : oobjs) {

@@ -135,7 +135,7 @@ def _mkMasterControllers(scale=1.0):
 		])
 
 	v = 0.25 * scale
-	outTanCtrl = cmds.outTanCtrl(radius=v, constructionHistory=False)[0]
+	outTanCtrl = cmds.circle(radius=v, constructionHistory=False)[0]
 
 	v = 0.25 * scale
 	inTanCtrl = cmds.curve(degree=1, p=[(v, v, 0), (v, -v, 0), (-v, -v, 0), (-v, v, 0), (v, v, 0)])

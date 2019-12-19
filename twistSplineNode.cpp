@@ -91,7 +91,7 @@ MStatus TwistSplineNode::initialize() {
 	tAttr.setWritable(false);
 	addAttribute(aOutputSpline);
 
-	aSplineLength = nAttr.create("splineLength", "sl", MFnNumericData::kDouble);
+	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
 	nAttr.setWritable(false);
 	addAttribute(aSplineLength);
 

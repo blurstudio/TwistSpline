@@ -45,6 +45,13 @@ public:
 	static MObject aOutLinearTargetY;
 	static MObject aOutLinearTargetZ;
 
+	static MObject aOutTwistUp;
+	static MObject aOutTwistUpX;
+	static MObject aOutTwistUpY;
+	static MObject aOutTwistUpZ;
+
+	static MObject aOutTwistMat;
+
 	static MObject aSmoothTan;
 	static MObject aSmoothTanX;
 	static MObject aSmoothTanY;
@@ -68,7 +75,7 @@ public:
 	static MObject aAuto;
 	static MObject aSmooth;
 	static MObject aWeight;
-	static MObject aEndpoint;
+	static MObject aBackpoint;
 
 	static MTypeId	id;
 };

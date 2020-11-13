@@ -59,6 +59,13 @@ MObject TwistTangentNode::aOutX;
 MObject TwistTangentNode::aOutY;
 MObject TwistTangentNode::aOutZ;
 
+MObject TwistTangentNode::aOutTwistUpX;
+MObject TwistTangentNode::aOutTwistUpY;
+MObject TwistTangentNode::aOutTwistUpZ;
+MObject TwistTangentNode::aOutTwistUp;
+
+MObject TwistTangentNode::aOutTwistMat;
+
 MObject TwistTangentNode::aParentInverseMatrix;
 MObject TwistTangentNode::aInTangent;
 MObject TwistTangentNode::aPrevVertex;
@@ -71,7 +78,7 @@ MObject TwistTangentNode::aNextLinearTargetZ;
 MObject TwistTangentNode::aAuto;
 MObject TwistTangentNode::aSmooth;
 MObject TwistTangentNode::aWeight;
-MObject TwistTangentNode::aEndpoint;
+MObject TwistTangentNode::aBackpoint;
 
 TwistTangentNode::TwistTangentNode() {}
 TwistTangentNode::~TwistTangentNode() {}
@@ -89,35 +96,56 @@ MStatus TwistTangentNode::initialize() {
 
 	//----------------- Outputs -----------------
 
-	aOutX = nAttr.create("outX", "ox", MFnNumericData::kDouble, 0.0, &status);
+	// The final output point relative to the parentInverseMatrix
+	// This is the data that will eventually get plugged into the spline
+	aOutX = uAttr.create("outX", "ox", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aOutX")
-	aOutY = nAttr.create("outY", "oy", MFnNumericData::kDouble, 0.0, &status);
+	aOutY = uAttr.create("outY", "oy", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aOutY")
-	aOutZ = nAttr.create("outZ", "oz", MFnNumericData::kDouble, 0.0, &status);
+	aOutZ = uAttr.create("outZ", "oz", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aOutZ")
 	aOut = nAttr.create("out", "out", aOutX, aOutY, aOutZ, &status);
 	CHECKSTAT("aOut")
 	addAttribute(aOut);
 
-	aSmoothTanX = nAttr.create("smoothTanX", "stx", MFnNumericData::kDouble, 0.0, &status);
+	// The position of the smooth tangent relative to the parentInverseMatrix
+	aSmoothTanX = uAttr.create("smoothTanX", "stx", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aSmoothTanX")
-	aSmoothTanY = nAttr.create("smoothTanY", "sty", MFnNumericData::kDouble, 0.0, &status);
+	aSmoothTanY = uAttr.create("smoothTanY", "sty", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aSmoothTanY")
-	aSmoothTanZ = nAttr.create("smoothTanZ", "stz", MFnNumericData::kDouble, 0.0, &status);
+	aSmoothTanZ = uAttr.create("smoothTanZ", "stz", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aSmoothTanZ")
 	aSmoothTan = nAttr.create("smoothTan", "st", aSmoothTanX, aSmoothTanY, aSmoothTanZ, &status);
 	CHECKSTAT("aSmoothTan")
 	addAttribute(aSmoothTan);
 
-	aOutLinearTargetX = nAttr.create("outLinearTargetX", "ltx", MFnNumericData::kDouble, 0.0, &status);
+	// The target that the adjacent tangent will point at when it's in auto-linear mode
+	// relative to the parentInverseMatrix
+	aOutLinearTargetX = uAttr.create("outLinearTargetX", "ltx", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aLinearTargetX")
-	aOutLinearTargetY = nAttr.create("outLinearTargetY", "lty", MFnNumericData::kDouble, 0.0, &status);
+	aOutLinearTargetY = uAttr.create("outLinearTargetY", "lty", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aLinearTargetY")
-	aOutLinearTargetZ = nAttr.create("outLinearTargetZ", "ltz", MFnNumericData::kDouble, 0.0, &status);
+	aOutLinearTargetZ = uAttr.create("outLinearTargetZ", "ltz", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aLinearTargetZ")
 	aOutLinearTarget = nAttr.create("outLinearTarget", "lt", aOutLinearTargetX, aOutLinearTargetY, aOutLinearTargetZ, &status);
 	CHECKSTAT("aLinearTarget")
 	addAttribute(aOutLinearTarget);
+
+	// The up-vector based off the prev and next vertices, relative to the parentInverseMatrix
+	aOutTwistUpX = uAttr.create("outTwistUpX", "otx", MFnUnitAttribute::kDistance, 0.0, &status);
+	CHECKSTAT("aTwistUpX")
+	aOutTwistUpY = uAttr.create("outTwistUpY", "oty", MFnUnitAttribute::kDistance, 0.0, &status);
+	CHECKSTAT("aTwistUpY")
+	aOutTwistUpZ = uAttr.create("outTwistUpZ", "otz", MFnUnitAttribute::kDistance, 0.0, &status);
+	CHECKSTAT("aTwistUpZ")
+	aOutTwistUp = nAttr.create("outTwistUp", "ot", aOutTwistUpX, aOutTwistUpY, aOutTwistUpZ, &status);
+	CHECKSTAT("aTwistUp")
+	addAttribute(aOutTwistUp);
+
+	// The up-vector matrix based off the prev and next vertices relative to the parentInverseMatrix
+	aOutTwistMat = mAttr.create("outTwistMat", "otm");
+	mAttr.setDefault(MMatrix::identity);
+	addAttribute(aOutTwistMat);
 
 	//----------------- Matrices -----------------
 	aParentInverseMatrix = mAttr.create("parentInverseMatrix", "pim");
@@ -125,7 +153,7 @@ MStatus TwistTangentNode::initialize() {
 	mAttr.setWritable(true);
 	mAttr.setDefault(MMatrix::identity);
 	addAttribute(aParentInverseMatrix);
-	
+
 	aInTangent = mAttr.create("inTangent", "it");
 	mAttr.setHidden(true);
 	mAttr.setDefault(MMatrix::identity);
@@ -146,11 +174,11 @@ MStatus TwistTangentNode::initialize() {
 	mAttr.setDefault(MMatrix::identity);
 	addAttribute(aNextVertex);
 
-	aNextLinearTargetX = nAttr.create("inLinearTargetX", "nltx", MFnNumericData::kDouble, 0.0, &status);
+	aNextLinearTargetX = uAttr.create("inLinearTargetX", "nltx", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aNextLinearTargetX")
-	aNextLinearTargetY = nAttr.create("inLinearTargetY", "nlty", MFnNumericData::kDouble, 0.0, &status);
+	aNextLinearTargetY = uAttr.create("inLinearTargetY", "nlty", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aNextLinearTargetY")
-	aNextLinearTargetZ = nAttr.create("inLinearTargetZ", "nltz", MFnNumericData::kDouble, 0.0, &status);
+	aNextLinearTargetZ = uAttr.create("inLinearTargetZ", "nltz", MFnUnitAttribute::kDistance, 0.0, &status);
 	CHECKSTAT("aNextLinearTargetZ")
 	aNextLinearTarget = nAttr.create("inLinearTarget", "nlt", aNextLinearTargetX, aNextLinearTargetY, aNextLinearTargetZ, &status);
 	CHECKSTAT("aNextLinearTarget")
@@ -175,6 +203,9 @@ MStatus TwistTangentNode::initialize() {
 	nAttr.setKeyable(true);
 	addAttribute(aWeight);
 	
+	aBackpoint = nAttr.create("backpoint", "bp", MFnNumericData::kBoolean, false);
+	addAttribute(aBackpoint);
+
 	// Affects code
 	std::vector<MObject *> smoothAffectors, smoothAffecteds;
 	std::vector<MObject *> linearAffectors, linearAffecteds;
@@ -184,18 +215,24 @@ MStatus TwistTangentNode::initialize() {
 	smoothAffectors.push_back(&aCurrentVertex);
 	smoothAffectors.push_back(&aNextVertex);
 	smoothAffectors.push_back(&aWeight);
+	smoothAffectors.push_back(&aBackpoint);
 
 	smoothAffecteds.push_back(&aSmoothTan);
 	smoothAffecteds.push_back(&aSmoothTanX);
 	smoothAffecteds.push_back(&aSmoothTanY);
 	smoothAffecteds.push_back(&aSmoothTanZ);
+	smoothAffecteds.push_back(&aOutTwistUp);
+	smoothAffecteds.push_back(&aOutTwistUpX);
+	smoothAffecteds.push_back(&aOutTwistUpY);
+	smoothAffecteds.push_back(&aOutTwistUpZ);
+	smoothAffecteds.push_back(&aOutTwistMat);
 
 	for (auto s : smoothAffectors) {
 		for (auto t : smoothAffecteds) {
 			attributeAffects(*s, *t);
 		}
 	}
-	
+
 	linearAffectors.push_back(&aSmooth);
 	linearAffectors.push_back(&aSmoothTan);
 	linearAffectors.push_back(&aCurrentVertex);
@@ -245,17 +282,23 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 	// Don't care what plug it is, just compute everything and set the outputs clean
 	MStatus status;
 	// TODO: do this stuff with mVectors or mPoints instead of mMatrixes
-	if (plug == aSmoothTan || plug == aSmoothTanX || plug == aSmoothTanY || plug == aSmoothTanZ) {
+	if (
+			plug == aSmoothTan || plug == aSmoothTanX || plug == aSmoothTanY || plug == aSmoothTanZ ||
+			plug == aOutTwistUp || plug == aOutTwistUpX || plug == aOutTwistUpY || plug == aOutTwistUpZ
+		)
+	{
 		// Calculate the weighted smooth tangents explicitly
 		// Get the first matrix
 		MDataHandle preH = data.inputValue(aPrevVertex);
 		MDataHandle curH = data.inputValue(aCurrentVertex);
 		MDataHandle nextH = data.inputValue(aNextVertex);
 		MDataHandle weightH = data.inputValue(aWeight);
+		MDataHandle epH = data.inputValue(aBackpoint);
 
 		MTransformationMatrix preTMat(preH.asMatrix());
 		MTransformationMatrix curTMat(curH.asMatrix());
 		MTransformationMatrix nextTMat(nextH.asMatrix());
+		bool isBackpoint = nextH.asBool();
 
 		MVector preTfm = preTMat.getTranslation(MSpace::kWorld);
 		MVector curTfm = curTMat.getTranslation(MSpace::kWorld);
@@ -270,23 +313,68 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		// We're pointing our tangent from pre->post 
 		// This is an auto-tan point, so get the half-angle between
 		// the perpendiculars of the legs
-		MVector smo;
+		MVector smo, tan, nrm, bin;
 		MVector preNorm = preLeg / preLegLen;
 		MVector postNorm = nextLeg / nextLegLen;
 		double dot = preNorm * postNorm;
 		if (abs(dot) >= 0.999999999 || preLegLen == 0.0) { // Linear case
+			tan = nextLeg.normal();
+			
+			// If we're in a straight line, default to using the local
+			// y-axis as the up-direction
+			nrm = MVector(0.0, 1.0, 0.0);
+			bin = (nrm ^ tan).normal();
+			nrm = (tan ^ bin).normal();
 			smo = nextLeg / 3.0;
 		}
 		else { // Nonlinear
-			MVector bin = preNorm ^ postNorm;
+			bin = preNorm ^ postNorm;
 			bin.normalize();
-			smo = ((bin ^ preNorm) + (bin ^ postNorm)).normal();
-			smo *= nextLegLen / 3.0;
+			tan = ((bin ^ preNorm) + (bin ^ postNorm)).normal();
+			smo = tan * (nextLegLen / 3.0);
+			nrm = (bin ^ tan).normal();
 		}
+		// If we're a tangent node coming the opposite direction
+		// Then ensure that the up-matrix still has +x pointing
+		// the right direction
+		if (isBackpoint){
+			tan *= -1;
+			bin *= -1;
+		}
+
 		smo *= weight;
-		MDataHandle matH = data.outputValue(aSmoothTan);
-		matH.setMVector(smo);
-		matH.setClean();
+
+		// x-> tan, y-> nrm, z->bin
+		double mm[4][4] = {
+			{tan[0],    nrm[0],    bin[0],    0.0},
+			{tan[1],    nrm[1],    bin[1],    0.0},
+			{tan[2],    nrm[2],    bin[2],    0.0},
+			{curTfm[0], curTfm[1], curTfm[2], 1.0}
+		};
+		MMatrix outMat(mm);
+
+		MDataHandle vecH = data.outputValue(aOutTwistUp);
+		vecH.setMVector(nrm);
+		vecH.setClean();
+
+		MDataHandle tanH = data.outputValue(aSmoothTan);
+		tanH.setMVector(smo);
+		tanH.setClean();
+
+
+
+        MDataHandle invParH = data.inputValue(aParentInverseMatrix);
+        MMatrix invParMat = invParH.asMatrix();
+
+		MDataHandle matH = data.outputValue(aOutTwistMat);
+        matH.setMMatrix(outMat);
+        matH.setClean();
+
+
+
+
+
+
 	}
 	else if (plug == aOutLinearTarget || plug == aOutLinearTargetX || plug == aOutLinearTargetY || plug == aOutLinearTargetZ) {
 		// Calculate 

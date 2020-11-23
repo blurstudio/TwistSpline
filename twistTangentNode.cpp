@@ -79,6 +79,7 @@ MObject TwistTangentNode::aAuto;
 MObject TwistTangentNode::aSmooth;
 MObject TwistTangentNode::aWeight;
 MObject TwistTangentNode::aBackpoint;
+MObject TwistTangentNode::aEndpoint;
 
 TwistTangentNode::TwistTangentNode() {}
 TwistTangentNode::~TwistTangentNode() {}
@@ -206,6 +207,9 @@ MStatus TwistTangentNode::initialize() {
 	aBackpoint = nAttr.create("backpoint", "bp", MFnNumericData::kBoolean, false);
 	addAttribute(aBackpoint);
 
+	aEndpoint = nAttr.create("endpoint", "ep", MFnNumericData::kBoolean, false);
+	addAttribute(aEndpoint);
+
 	// Affects code
 	std::vector<MObject *> smoothAffectors, smoothAffecteds;
 	std::vector<MObject *> linearAffectors, linearAffecteds;
@@ -216,6 +220,7 @@ MStatus TwistTangentNode::initialize() {
 	smoothAffectors.push_back(&aNextVertex);
 	smoothAffectors.push_back(&aWeight);
 	smoothAffectors.push_back(&aBackpoint);
+	smoothAffectors.push_back(&aEndpoint);
 
 	smoothAffecteds.push_back(&aSmoothTan);
 	smoothAffecteds.push_back(&aSmoothTanX);
@@ -278,13 +283,14 @@ MStatus TwistTangentNode::initialize() {
 	return MS::kSuccess;
 }
 
-MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
+MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 	// Don't care what plug it is, just compute everything and set the outputs clean
 	MStatus status;
 	// TODO: do this stuff with mVectors or mPoints instead of mMatrixes
 	if (
 			plug == aSmoothTan || plug == aSmoothTanX || plug == aSmoothTanY || plug == aSmoothTanZ ||
-			plug == aOutTwistUp || plug == aOutTwistUpX || plug == aOutTwistUpY || plug == aOutTwistUpZ
+			plug == aOutTwistUp || plug == aOutTwistUpX || plug == aOutTwistUpY || plug == aOutTwistUpZ ||
+			plug == aOutTwistMat
 		)
 	{
 		// Calculate the weighted smooth tangents explicitly
@@ -293,12 +299,14 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MDataHandle curH = data.inputValue(aCurrentVertex);
 		MDataHandle nextH = data.inputValue(aNextVertex);
 		MDataHandle weightH = data.inputValue(aWeight);
-		MDataHandle epH = data.inputValue(aBackpoint);
+		MDataHandle bpH = data.inputValue(aBackpoint);
+		MDataHandle epH = data.inputValue(aEndpoint);
 
 		MTransformationMatrix preTMat(preH.asMatrix());
 		MTransformationMatrix curTMat(curH.asMatrix());
 		MTransformationMatrix nextTMat(nextH.asMatrix());
-		bool isBackpoint = nextH.asBool();
+		bool isBackpoint = bpH.asBool();
+		bool isEndpoint = epH.asBool();
 
 		MVector preTfm = preTMat.getTranslation(MSpace::kWorld);
 		MVector curTfm = curTMat.getTranslation(MSpace::kWorld);
@@ -327,12 +335,33 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			nrm = (tan ^ bin).normal();
 			smo = nextLeg / 3.0;
 		}
-		else { // Nonlinear
-			bin = preNorm ^ postNorm;
-			bin.normalize();
+		else if (!isEndpoint){ // Nonlinear
+
+			bin = (preNorm ^ postNorm).normal();
 			tan = ((bin ^ preNorm) + (bin ^ postNorm)).normal();
 			smo = tan * (nextLegLen / 3.0);
-			nrm = (bin ^ tan).normal();
+
+			nrm = MVector(0.0, 1.0, 0.0);
+			bin = (nrm ^ tan).normal();
+			nrm = (tan ^ bin).normal();
+
+		}
+		else {
+			// We are defining the twist of an endpoint, so in this
+			// case, the Prev leg is pointing to the *third* CV just
+			// to get the up-vector, and the tangent will just be 
+			// the postNorm
+			tan = postNorm;
+			bin = (preNorm ^ postNorm).normal();
+
+			// The smooth is still the same thing
+			smo = ((bin ^ preNorm) + (bin ^ postNorm)).normal();
+			smo = smo * (nextLegLen / 3.0);
+
+			nrm = MVector(0.0, 1.0, 0.0);
+			bin = (nrm ^ tan).normal();
+			nrm = (tan ^ bin).normal();
+
 		}
 		// If we're a tangent node coming the opposite direction
 		// Then ensure that the up-matrix still has +x pointing
@@ -346,9 +375,9 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// x-> tan, y-> nrm, z->bin
 		double mm[4][4] = {
-			{tan[0],    nrm[0],    bin[0],    0.0},
-			{tan[1],    nrm[1],    bin[1],    0.0},
-			{tan[2],    nrm[2],    bin[2],    0.0},
+			{tan[0],	tan[1],    tan[2],	  0.0},
+			{nrm[0],	nrm[1],    nrm[2],	  0.0},
+			{bin[0],	bin[1],    bin[2],	  0.0},
 			{curTfm[0], curTfm[1], curTfm[2], 1.0}
 		};
 		MMatrix outMat(mm);
@@ -363,17 +392,12 @@ MStatus	TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 
 
 
-        MDataHandle invParH = data.inputValue(aParentInverseMatrix);
-        MMatrix invParMat = invParH.asMatrix();
+		MDataHandle invParH = data.inputValue(aParentInverseMatrix);
+		MMatrix invParMat = invParH.asMatrix();
 
 		MDataHandle matH = data.outputValue(aOutTwistMat);
-        matH.setMMatrix(outMat);
-        matH.setClean();
-
-
-
-
-
+		matH.setMMatrix(outMat * invParMat);
+		matH.setClean();
 
 	}
 	else if (plug == aOutLinearTarget || plug == aOutLinearTargetX || plug == aOutLinearTargetY || plug == aOutLinearTargetZ) {

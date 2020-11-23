@@ -76,6 +76,7 @@ public:
 	static MObject aSmooth;
 	static MObject aWeight;
 	static MObject aBackpoint;
+	static MObject aEndpoint;
 
 	static MTypeId	id;
 };

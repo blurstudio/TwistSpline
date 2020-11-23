@@ -25,19 +25,20 @@ SOFTWARE.
 from maya import cmds, OpenMaya
 
 # Naming Convention
-DFM_ORG_FMT = "Org_X_X_{0}Jnts" # Deformer Organizer
-DFM_BFR_FMT = "Hbfr_X_{0}Rider_Part{1:02d}" # Rider Buffer
-DFM_FMT = "Dfm_X_{0}Rider_Part{1:02d}" # Deformer
-SPLINE_FMT = "Rig_X_{0}Spline_Drv" # Spline name
-MASTER_FMT = "Ctrl_X_{}SplineGlobal_Part" # Global control
-CTRL_ORG_FMT = "Org_X_{0}_Ctrls" # Control organizer
-BFR_CV_FMT = "Hbfr_X_{0}Spline_Part{1:02d}" # CV Buffer
-CTRL_CV_FMT = "Ctrl_X_{0}Spline_Part{1:02d}" # CV
-CTRL_TWIST_FMT = "Ctrl_X_{0}Twist_Part{1:02d}" # Twist
-CTRL_INTAN_FMT = "Ctrl_X_{0}InTangent_Part{1:02d}" # In-Tangent
-CTRL_OUTTAN_FMT = "Ctrl_X_{0}OutTangent_Part{1:02d}" # Out-Tangent
-BFR_AINTAN_FMT = "Hbfr_X_{0}AutoInTangent_Part{1:02d}" # Auto In-Tangent Buffer
-BFR_AOUTTAN_FMT = "Hbfr_X_{0}AutoOutTangent_Part{1:02d}" # Auto Out-Tangent Buffer
+DFM_ORG_FMT = "Org_X_X_{0}Jnts"  # Deformer Organizer
+DFM_BFR_FMT = "Hbfr_X_{0}Rider_Part{1:02d}"  # Rider Buffer
+DFM_FMT = "Dfm_X_{0}Rider_Part{1:02d}"  # Deformer
+SPLINE_FMT = "Rig_X_{0}Spline_Drv"  # Spline name
+MASTER_FMT = "Ctrl_X_{}SplineGlobal_Part"  # Global control
+CTRL_ORG_FMT = "Org_X_{0}_Ctrls"  # Control organizer
+BFR_CV_FMT = "Hbfr_X_{0}Spline_Part{1:02d}"  # CV Buffer
+CTRL_CV_FMT = "Ctrl_X_{0}Spline_Part{1:02d}"  # CV
+BFR_TWIST_FMT = "Hbfr_X_{0}Twist_Part{1:02d}"  # Twist Buffer
+CTRL_TWIST_FMT = "Ctrl_X_{0}Twist_Part{1:02d}"  # Twist
+CTRL_INTAN_FMT = "Ctrl_X_{0}InTangent_Part{1:02d}"  # In-Tangent
+CTRL_OUTTAN_FMT = "Ctrl_X_{0}OutTangent_Part{1:02d}"  # Out-Tangent
+BFR_AINTAN_FMT = "Hbfr_X_{0}AutoInTangent_Part{1:02d}"  # Auto In-Tangent Buffer
+BFR_AOUTTAN_FMT = "Hbfr_X_{0}AutoOutTangent_Part{1:02d}"  # Auto Out-Tangent Buffer
 
 def makeLinkLine(sourceNode, destNode, selectNode=None):
 	""" Draw a line between two nodes. Clicking the line selects the target object
@@ -106,7 +107,7 @@ def _mkMasterHarbieControllers(scale=1.0):
 	iTanCtrl = toPath(cloc("Square", "TMP_ITan", None, None, size=0.4*scale, ro=[90, 0, 0], color=[0, 1, 1]))
 	twistCtrl = toPath(cloc("Compass", "TMP_SplineTwist", None, None, size=1.5*scale, ro=[-90, 90, 0], color=[0.5, 0, 1]))
 	masterCtrl = toPath(cloc("CrossArrow", "TMP_SplineGlobal", None, None, size=3.0*scale, ro=[90, 0, 0], color=[0, 1, 0]))
-	return cvCtrl, oTanCtrl, iTanCtrl, twistCtrl, masterCtrl 
+	return cvCtrl, oTanCtrl, iTanCtrl, twistCtrl, masterCtrl
 
 def _mkMasterControllers(scale=1.0):
 	""" Make the master objects so we can duplicate them to be the controllers
@@ -151,9 +152,9 @@ def _mkMasterControllers(scale=1.0):
 		degree=3,
 		periodic=True,
 		p=[
-			(v, -v + o, 0),  (0, -s + o, 0), (-v, -v + o, 0), (-s, 0 + o, 0),
-			(-v,  v + o, 0), (0,  s + o, 0), (v,  v + o, 0),  (s, 0 + o, 0),
-			(v, -v + o, 0),  (0, -s + o, 0), (-v, -v + o, 0)
+			(v, -v + o, 0), (0, -s + o, 0), (-v, -v + o, 0), (-s, 0 + o, 0),
+			(-v, v + o, 0), (0,  s + o, 0), (v,   v + o, 0), (s,  0 + o, 0),
+			(v, -v + o, 0), (0, -s + o, 0), (-v, -v + o, 0)
 		],
 		k=[-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 	return cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl
@@ -175,6 +176,7 @@ def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
 		[str, ...]: All the Auto-Out-Tangents
 		[str, ...]: All the Auto-In-Tangents
 		[str, ...]: All the Twisters
+		[str, ...]: All the Twister Buffers
 		str: The base controller
 	"""
 
@@ -189,14 +191,15 @@ def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
 
 	# make the requested number of CV's
 	# don't hide the .rx attribute
-	cvs, tws, bfrs = [], [], []
+	cvs, tws, cvBfrs, twBfrs = [], [], [], []
 	controlsGrp = cmds.createNode("transform", name=CTRL_ORG_FMT.format(pfx))
 	cmds.parentConstraint(master, controlsGrp, mo=True)
 	cmds.scaleConstraint(master, controlsGrp, mo=True)
 
 	for i in range(numCVs):
-		bfr = cmds.createNode("transform", name=BFR_CV_FMT.format(pfx, i + 1), parent=controlsGrp)
+		cvBfr = cmds.createNode("transform", name=BFR_CV_FMT.format(pfx, i + 1), parent=controlsGrp)
 		cv = cmds.duplicate(cvCtrl, name=CTRL_CV_FMT.format(pfx, i + 1))[0]
+		twBfr = cmds.createNode("transform", name=BFR_TWIST_FMT.format(pfx, i + 1), parent=controlsGrp)
 		tw = cmds.duplicate(twistCtrl, name=CTRL_TWIST_FMT.format(pfx, i + 1))[0]
 
 		cmds.addAttr(cv, longName="Pin", attributeType='double', defaultValue=0.0, minValue=0.0, maxValue=1.0)
@@ -208,12 +211,14 @@ def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
 			cmds.setAttr(tw + h, lock=True, keyable=False, channelBox=False)
 		cmds.addAttr(tw, longName="UseTwist", attributeType='double', defaultValue=0.0, minValue=0.0, maxValue=1.0)
 		cmds.setAttr(tw + '.UseTwist', edit=True, keyable=True)
-		cv, = cmds.parent(cv, bfr)
-		tw, = cmds.parent(tw, cv)
-		cmds.xform(bfr, translation=(spread * 3 * i, 0, 0))
+		cv, = cmds.parent(cv, cvBfr)
+		twBfr, = cmds.parent(twBfr, cv)
+		tw, = cmds.parent(tw, twBfr)
+		cmds.xform(cvBfr, translation=(spread * 3 * i, 0, 0))
 		cvs.append(cv)
 		tws.append(tw)
-		bfrs.append(bfr)
+		cvBfrs.append(cvBfr)
+		twBfrs.append(twBfr)
 
 	# make the tangents and auto-tangents
 	oTans, iTans, aoTans, aiTans = [], [], [], []
@@ -259,14 +264,49 @@ def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
 		makeLinkLine(aiTan, cvs[itNum], selectNode=iTan)
 
 	cmds.delete((cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl))
-	return cvs, bfrs, oTans, iTans, aoTans, aiTans, tws, master
+	return cvs, cvBfrs, oTans, iTans, aoTans, aiTans, tws, twBfrs, master
+
+
+
+
+def createTwistSetup(pre, cur, post, buf, isFirst=False, isLast=False):
+	""" Create an auto-twist setup for a set of CVs
+
+	Arguments:
+		pre (str): The previous CV for auto-tangent calculations
+		cur (str): The CV that will have its auto-twist connected
+		post (str): The next CV for auto-tangent calculations
+		buf (str): The Buffer that will have its auto-twist connected
+		isFirst (bool): Whether this segment is the first one in the spline
+		isLast (bool): Whether this segment is the last one in the spline
+	"""
+	twt = cmds.createNode("twistTangent", name="twistAuto")
+	dcm = cmds.createNode("decomposeMatrix", name="twistDecompose")
+
+	if isLast:
+		cmds.setAttr("{}.backpoint".format(twt), True)
+	if isFirst or isLast:
+		cmds.setAttr("{}.endpoint".format(twt), True)
+
+	cmds.connectAttr("{}.worldMatrix[0]".format(pre), "{}.previousVertex".format(twt))
+	cmds.connectAttr("{}.worldMatrix[0]".format(cur), "{}.currentVertex".format(twt))
+	cmds.connectAttr("{}.worldMatrix[0]".format(post), "{}.nextVertex".format(twt))
+
+	cmds.connectAttr("{}.parentInverseMatrix[0]".format(buf), "{}.parentInverseMatrix".format(twt))
+	cmds.connectAttr("{}.outTwistMat".format(twt), "{}.inputMatrix".format(dcm))
+	cmds.connectAttr("{}.outputRotate".format(dcm), "{}.rotate".format(buf))
+	cmds.connectAttr("{}.outputScale".format(dcm), "{}.scale".format(buf))
+	cmds.connectAttr("{}.outputTranslate".format(dcm), "{}.translate".format(buf))
+
+
+
 
 def createTangentSegmentSetup(pre, start, end, nxt, oTan, iTan, aoTan, aiTan, isFirst=False, isLast=False):
 	""" Create a single twist spline tangent setup for a single segment
 
 	With 4 CV's given, there are 3 segments between them.
 	This creates a tangent setup for the middle segment.
-	
+
 	Arguments:
 		pre (str): The previous CV for auto-tangent calculations
 		start (str): The CV that will have its out-tangent connected
@@ -280,7 +320,7 @@ def createTangentSegmentSetup(pre, start, end, nxt, oTan, iTan, aoTan, aiTan, is
 		isLast (bool): Whether this segment is the last one in the spline
 	"""
 	# connect all the in/out tangents
-	ott = cmds.createNode("twistTangent", name="twistTangentOut") # TODO: make with name based on oTan
+	ott = cmds.createNode("twistTangent", name="twistTangentOut")  # TODO: make with name based on oTan
 	cmds.connectAttr("{}.worldMatrix[0]".format(oTan), "{}.inTangent".format(ott))
 	cmds.connectAttr("{}.Auto".format(oTan), "{}.auto".format(ott))
 	cmds.connectAttr("{}.Smooth".format(oTan), "{}.smooth".format(ott))
@@ -294,7 +334,7 @@ def createTangentSegmentSetup(pre, start, end, nxt, oTan, iTan, aoTan, aiTan, is
 	cmds.connectAttr("{}.worldMatrix[0]".format(end), "{}.nextVertex".format(ott))
 	cmds.setAttr("{}.Auto".format(oTan), 1.0)
 
-	itt = cmds.createNode("twistTangent", name="twistTangentIn") # TODO: make with name based on iTan
+	itt = cmds.createNode("twistTangent", name="twistTangentIn")  # TODO: make with name based on iTan
 	cmds.connectAttr("{}.worldMatrix[0]".format(iTan), "{}.inTangent".format(itt))
 	cmds.connectAttr("{}.Auto".format(iTan), "{}.auto".format(itt))
 	cmds.connectAttr("{}.Smooth".format(iTan), "{}.smooth".format(itt))
@@ -317,11 +357,12 @@ def createTangentSegmentSetup(pre, start, end, nxt, oTan, iTan, aoTan, aiTan, is
 	cmds.connectAttr("{0}.out".format(itt), "{}.translate".format(aiTan))
 	cmds.connectAttr("{}.parentInverseMatrix[0]".format(aiTan), "{}.parentInverseMatrix".format(itt))
 
-def connectTwistSplineTangents(cvs, oTans, iTans, aoTans, aiTans, closed=False):
+def connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed=False):
 	""" Connect all of the tangent setups for the spline controller objects
 
 	Arguments:
 		cvs ([str, ...]): A list of all the CV controllers
+		twBfrs ([str, ...]): A list of all the Twist Buffers
 		oTans ([str, ...]): A list of all the out-tangents
 		iTans ([str, ...]): A list of all the in-tangents
 		aoTans ([str, ...]): A list of all the auto-out-tangents
@@ -339,9 +380,21 @@ def connectTwistSplineTangents(cvs, oTans, iTans, aoTans, aiTans, closed=False):
 		nxt = cvs[(i + 2) % len(cvs)]
 		createTangentSegmentSetup(pre, start, end, nxt, oTans[i], iTans[i], aoTans[i], aiTans[i], isFirst=isFirst, isLast=isLast)
 
+	for i in range(segments):
+		isFirst = (i == 0) and not closed
+		isLast = (i == len(cvs) - 2) and not closed
+
+		cur = cvs[i]
+		buf = twBfrs[i]
+
+		pre = cvs[i - 1] if not isFirst else cvs[(i + 2) % len(cvs)]
+		post = cvs[(i + 1) % len(cvs)] if not isLast else cvs[i - 2]
+
+		createTwistSetup(pre, cur, post, buf, isFirst=isFirst, isLast=isLast)
+
 def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=False):
 	""" Given all the controller objects, build a twist spline
-	
+
 	Arguments:
 		pfx (str): The user name of the spline. Will be formatted into the given naming convention
 		cvs ([str, ...]): A list of the CV objects
@@ -350,15 +403,15 @@ def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=False):
 		tws ([str, ...]): A list of the twist controllers
 		maxParam (float): The U-Value of the last CV
 		closed (bool): Whether the spline forms a closed loop
-	
+
 	Returns:
 		str: The spline transform node
 		str: The spline shape node
-	
+
 	"""
-	numCVs = len(cvs) # Total number of CV nodes
-	shift = 0 if closed else 1 # convenience variable so I don't have if's everywhere
-	usedCVs = numCVs + 1 - shift # Total number of CV's connected to the spline node
+	numCVs = len(cvs)  # Total number of CV nodes
+	shift = 0 if closed else 1  # convenience variable so I don't have if's everywhere
+	usedCVs = numCVs + 1 - shift  # Total number of CV's connected to the spline node
 
 	# build the spline object and set the spline Params
 	splineTfm = cmds.createNode("transform", name=SPLINE_FMT.format(pfx))
@@ -476,8 +529,8 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed
 
 	maxParam *= 3.0 * spread
 
-	cvs, bfrs, oTans, iTans, aoTans, aiTans, tws, master = mkTwistSplineControllers(pfx, numCVs, spread, closed=closed)
-	connectTwistSplineTangents(cvs, oTans, iTans, aoTans, aiTans, closed=closed)
+	cvs, cvBfrs, oTans, iTans, aoTans, aiTans, tws, twBfrs, master = mkTwistSplineControllers(pfx, numCVs, spread, closed=closed)
+	connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed=closed)
 	splineTfm, splineShape = buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=closed)
 
 	jPars, joints, group, cnst = None, None, None, None
@@ -492,13 +545,13 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed
 		#cmds.connectAttr("{0}.scale".format(master), "{0}.input2".format(dnMultDivide), f=True)
 		#cmds.connectAttr("{0}.outputX".format(dnMultDivide), "{0}.normValue".format(cnst), f=True)
 
-	return cvs, bfrs, oTans, iTans, jPars, joints, group, splineTfm, master, cnst
+	return cvs, cvBfrs, oTans, iTans, jPars, joints, group, splineTfm, master, cnst
 
 def _bezierConvert(crv):
 	""" Convert a curve to bezier non-destructively
 	Arguments:
 		crv (str): A curve shape or transform
-	
+
 	Returns:
 		str: A Bezier curve shape
 		list: Any temporary objects that need to be deleted later
@@ -513,9 +566,9 @@ def _bezierConvert(crv):
 		tfm = cmds.listRelatives(nurbsShapes, path=True, parent=True)
 		# nurbsCurveToBezier is *supposed* to take arguments, but always errors
 		# So I have to do this with selection. I hate that. A Lot.
-		dup = cmds.duplicate(tfm) # duplicates and selects the object
+		dup = cmds.duplicate(tfm)  # duplicates and selects the object
 		cmds.select(dup)
-		cmds.nurbsCurveToBezier() # Converts selection to bezier
+		cmds.nurbsCurveToBezier()  # Converts selection to bezier
 		bezShapes = cmds.listRelatives(dup[0], path=True, type="bezierCurve")
 		if bezShapes is not None:
 			return bezShapes[0], dup
@@ -553,7 +606,7 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 	# So I've got to do it via mel
 	#curveForm = curveFn.form()
 	curveForm = cmds.getAttr("{0}.form".format(crvShape))
-	isClosed = curveForm > 0 # 1->closed 2->periodic
+	isClosed = curveForm > 0  # 1->closed 2->periodic
 	if isClosed:
 		numCVs -= 1
 
@@ -599,7 +652,7 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 	cmds.setAttr("{0}.normValue".format(tmpCnst), params[-1])
 	for param in params:
 		cmds.setAttr("{0}.params[{1}].param".format(tmpCnst, newInd), param)
-		cmds.dgeval(tmpCnst) # maybe a propagation bug somewhere in the constraint?
+		cmds.dgeval(tmpCnst)  # maybe a propagation bug somewhere in the constraint?
 		rot = cmds.getAttr("{0}.outputs[{1}].rotate".format(tmpCnst, newInd))
 		rotations.append(rot[0])
 	cmds.delete(tmpCnst)
@@ -629,7 +682,7 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 	for bfr in bfrs:
 		for att in [x+y for x in 'trs' for y in 'xyz']:
 			cmds.setAttr("{0}.{1}".format(bfr, att), lock=True)
-		
+
 
 def convertSelectedToTwistSpline(pfx, numJoints=10):
 	sel = cmds.ls(sl=True)

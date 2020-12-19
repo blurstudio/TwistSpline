@@ -563,7 +563,7 @@ public:
 			norm = normalized(x1 - d * (tt / bb));
 		}
 		binorm = normalized(cross(tan, norm));
-#elif 0
+#elif 1
 		// Or by the double reflection method
 		// Better (Haven't found an issue yet)
 		Vector preNorm, postNorm;
@@ -635,6 +635,9 @@ public:
 	  * linearly interpolating between startAngle and endAngle
 	  */
 	void applyTwist(Float startAngle, Float endAngle){ // inRadians
+        startAngle *= -1;
+        endAngle *= -1;
+
 		resize(tnormals, size(rnormals));
 		resize(tbinormals, size(rbinormals));
 		resize(twistVals, size(rnormals));
@@ -642,7 +645,7 @@ public:
 		
 		for (size_t i=0; i <= lutSteps; ++i){
 			Float perc = sampleLengths[i] / len; // parameterize by length
-			Float angle = ((endAngle - startAngle) * perc) + startAngle;
+            Float angle = ((endAngle - startAngle) * perc) + startAngle;
 			twistVals[i] = angle;
 			const Vector &x = rnormals[i];
 			const Vector &y = rbinormals[i];

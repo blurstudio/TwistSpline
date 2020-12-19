@@ -313,6 +313,8 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MVector nextTfm = nextTMat.getTranslation(MSpace::kWorld);
 		double weight = weightH.asDouble();
 
+        MVector curNrm = curTMat.asMatrix()[1];
+
 		MVector preLeg = preTfm - curTfm;
 		MVector nextLeg = nextTfm - curTfm;
 		double preLegLen = preLeg.length();
@@ -330,7 +332,8 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			
 			// If we're in a straight line, default to using the local
 			// y-axis as the up-direction
-			nrm = MVector(0.0, 1.0, 0.0);
+			//nrm = MVector(0.0, 1.0, 0.0);
+            nrm = curNrm;
 			bin = (nrm ^ tan).normal();
 			nrm = (tan ^ bin).normal();
 			smo = nextLeg / 3.0;
@@ -341,7 +344,8 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			tan = ((bin ^ preNorm) + (bin ^ postNorm)).normal();
 			smo = tan * (nextLegLen / 3.0);
 
-			nrm = MVector(0.0, 1.0, 0.0);
+			//nrm = MVector(0.0, 1.0, 0.0);
+            nrm = curNrm;
 			bin = (nrm ^ tan).normal();
 			nrm = (tan ^ bin).normal();
 
@@ -358,7 +362,8 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			smo = ((bin ^ preNorm) + (bin ^ postNorm)).normal();
 			smo = smo * (nextLegLen / 3.0);
 
-			nrm = MVector(0.0, 1.0, 0.0);
+			//nrm = MVector(0.0, 1.0, 0.0);
+            nrm = curNrm;
 			bin = (nrm ^ tan).normal();
 			nrm = (tan ^ bin).normal();
 

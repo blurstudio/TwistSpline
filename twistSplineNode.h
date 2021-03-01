@@ -71,6 +71,7 @@ public:
 public:
 	static MObject aOutputSpline;
 	static MObject aSplineLength;
+	static MObject aMaxVertices;
 
 	// array
 	static MObject aVertexData;
@@ -155,23 +156,4 @@ private:
 	TwistSplineNode *tsn;
 	MCallbackId fModelEditorChangedCbId;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

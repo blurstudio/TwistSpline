@@ -563,9 +563,8 @@ public:
 			norm = normalized(x1 - d * (tt / bb));
 		}
 		binorm = normalized(cross(tan, norm));
-#elif 1
+#elif 0
 		// Or by the double reflection method
-		// Better (Haven't found an issue yet)
 		Vector preNorm, postNorm;
 		{
 			Vector v1 = tran - points[i];
@@ -589,6 +588,7 @@ public:
 		norm = normalized((1-t) * preNorm + t * postNorm);
 		binorm = normalized(cross(tan, norm));
 # else
+		// KEEP IT HERE!  The other options cause jitter
 		// Simple interpolation and rebuild the basis
 		auto n1 = normals[i];
 		auto n2 = normals[i + 1];

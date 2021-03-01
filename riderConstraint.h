@@ -42,6 +42,11 @@ public:
 	static MObject aUseCycle;
 	static MObject aNormalize;
 	static MObject aNormValue;
+	static MObject aUseGlobalMin;
+	static MObject aMinGlobalParam;
+	static MObject aUseGlobalMax;
+	static MObject aMaxGlobalParam;
+
 	// inputs
 	static MObject aInputSplines;
 		static MObject aSpline;
@@ -49,6 +54,12 @@ public:
 
 	static MObject aParams;
 		static MObject aParam;
+
+        static MObject aUseMin;
+        static MObject aMinParam;
+        static MObject aUseMax;
+        static MObject aMaxParam;
+
 		static MObject aParentInverseMatrix;
 
 	// output

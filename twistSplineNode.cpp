@@ -74,6 +74,7 @@ MObject TwistSplineNode::aUseOrient;
 
 MObject TwistSplineNode::aDebugDisplay;
 MObject TwistSplineNode::aDebugScale;
+MObject TwistSplineNode::aMaxVertices;
 
 TwistSplineNode::TwistSplineNode() {}
 TwistSplineNode::~TwistSplineNode() {}
@@ -101,6 +102,10 @@ MStatus TwistSplineNode::initialize() {
 	addAttribute(aDebugDisplay);
 	aDebugScale = nAttr.create("debugScale", "ds", MFnNumericData::kDouble, 1.0);
 	addAttribute(aDebugScale);
+	aMaxVertices = nAttr.create("maxVertices", "mv", MFnNumericData::kInt, 1000);
+    nAttr.setMin(2);
+	addAttribute(aMaxVertices);
+
 
 	//--------------- Array -------------------
 
@@ -150,10 +155,12 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aTwistWeight, aOutputSpline);
 	attributeAffects(aTwistValue, aOutputSpline);
 	attributeAffects(aUseOrient, aOutputSpline);
+	attributeAffects(aMaxVertices, aOutputSpline);
 
 	attributeAffects(aInTangent, aSplineLength);
 	attributeAffects(aControlVertex, aSplineLength);
 	attributeAffects(aOutTangent, aSplineLength);
+	attributeAffects(aMaxVertices, aSplineLength);
 
 	return MS::kSuccess;
 }
@@ -226,9 +233,15 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		std::vector<double> userTwist;
 		std::vector<double> orientLock;
 
+		MDataHandle hMaxVertices = data.inputValue(aMaxVertices);
+		int maxVertices = hMaxVertices.asInt();
+
 		// loop over the input matrices
 		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
 		unsigned ecount = inputs.elementCount();
+
+        // Trim the number of vertices to the maximum provided by the user
+        if (maxVertices < ecount) { ecount = maxVertices; }
 
 		// I'm OK with just looping over the physical indices here
 		// because if it's unconnected, then I don't really care

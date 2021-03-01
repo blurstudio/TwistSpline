@@ -47,47 +47,57 @@ SOFTWARE.
 #include "twistSplineData.h"
 
 
-#define ROTATE_ORDER_XYZ        0
-#define ROTATE_ORDER_YZX        1
-#define ROTATE_ORDER_ZXY        2
-#define ROTATE_ORDER_XZY        3
-#define ROTATE_ORDER_YXZ        4
-#define ROTATE_ORDER_ZYX        5
+#define ROTATE_ORDER_XYZ		0
+#define ROTATE_ORDER_YZX		1
+#define ROTATE_ORDER_ZXY		2
+#define ROTATE_ORDER_XZY		3
+#define ROTATE_ORDER_YXZ		4
+#define ROTATE_ORDER_ZYX		5
 
 #define CHECKSTAT(m) if (!status) {status.perror(m); return status;};
 
-MTypeId     riderConstraint::id(0x001226FC);
+MTypeId		riderConstraint::id(0x001226FC);
 
-MObject     riderConstraint::aRotateOrder;
-MObject     riderConstraint::aGlobalOffset;
-MObject     riderConstraint::aGlobalSpread;
-MObject     riderConstraint::aUseCycle;
-MObject     riderConstraint::aNormalize;
-MObject     riderConstraint::aNormValue;
+MObject		riderConstraint::aRotateOrder;
+MObject		riderConstraint::aGlobalOffset;
+MObject		riderConstraint::aGlobalSpread;
+MObject		riderConstraint::aUseCycle;
+MObject		riderConstraint::aNormalize;
+MObject		riderConstraint::aNormValue;
+
+MObject		riderConstraint::aUseGlobalMin;
+MObject		riderConstraint::aMinGlobalParam;
+MObject		riderConstraint::aUseGlobalMax;
+MObject		riderConstraint::aMaxGlobalParam;
 
 // inputs
-MObject     riderConstraint::aInputSplines;
-	MObject     riderConstraint::aSpline;
-	MObject     riderConstraint::aWeight;
+MObject		riderConstraint::aInputSplines;
+	MObject		riderConstraint::aSpline;
+	MObject		riderConstraint::aWeight;
 
-MObject     riderConstraint::aParams;
-	MObject     riderConstraint::aParam;
-	MObject     riderConstraint::aParentInverseMatrix;
+MObject		riderConstraint::aParams;
+	MObject		riderConstraint::aParam;
+	MObject		riderConstraint::aUseMin;
+	MObject		riderConstraint::aMinParam;
+	MObject		riderConstraint::aUseMax;
+	MObject		riderConstraint::aMaxParam;
+	MObject		riderConstraint::aParentInverseMatrix;
+
 
 // output
-MObject     riderConstraint::aOutputs;
-	MObject     riderConstraint::aTranslate;
-	MObject     riderConstraint::aTranslateX;
-	MObject     riderConstraint::aTranslateY;
-	MObject     riderConstraint::aTranslateZ;
-	MObject     riderConstraint::aRotate;
-	MObject     riderConstraint::aRotateX;
-	MObject     riderConstraint::aRotateY;
-	MObject     riderConstraint::aRotateZ;
-	MObject     riderConstraint::aScale;
-	MObject     riderConstraint::aScaleX;
-	MObject     riderConstraint::aScaleY;
-	MObject     riderConstraint::aScaleZ;
+MObject		riderConstraint::aOutputs;
+	MObject		riderConstraint::aTranslate;
+	MObject		riderConstraint::aTranslateX;
+	MObject		riderConstraint::aTranslateY;
+	MObject		riderConstraint::aTranslateZ;
+	MObject		riderConstraint::aRotate;
+	MObject		riderConstraint::aRotateX;
+	MObject		riderConstraint::aRotateY;
+	MObject		riderConstraint::aRotateZ;
+	MObject		riderConstraint::aScale;
+	MObject		riderConstraint::aScaleX;
+	MObject		riderConstraint::aScaleY;
+	MObject		riderConstraint::aScaleZ;
 
 MStatus riderConstraint::initialize() {
 	MStatus status;
@@ -151,6 +161,36 @@ MStatus riderConstraint::initialize() {
 	status = addAttribute(aNormValue);
 	CHECKSTAT("aNormValue");
 
+
+
+
+	aUseGlobalMin = nAttr.create("useGlobalMin", "ugn", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aUseGlobalMin");
+	nAttr.setKeyable(true);
+	status = addAttribute(aUseGlobalMin);
+	CHECKSTAT("aUseGlobalMin");
+
+	aMinGlobalParam = nAttr.create("minGlobalParam", "ngp", MFnNumericData::kDouble, 0.0, &status);
+	CHECKSTAT("aMinGlobalParam");
+	nAttr.setKeyable(true);
+	status = addAttribute(aMinGlobalParam);
+	CHECKSTAT("aMinGlobalParam");
+
+	aUseGlobalMax = nAttr.create("useGlobalMax", "ugx", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aUseGlobalMax");
+	nAttr.setKeyable(true);
+	status = addAttribute(aUseGlobalMax);
+	CHECKSTAT("aUseGlobalMax");
+
+	aMaxGlobalParam = nAttr.create("maxGlobalParam", "xgp", MFnNumericData::kDouble, 1.0, &status);
+	CHECKSTAT("aMaxGlobalParam");
+	nAttr.setKeyable(true);
+	status = addAttribute(aMaxGlobalParam);
+	CHECKSTAT("aMaxGlobalParam");
+
+
+
+
 	// Spline input array
 	aSpline = tAttr.create("spline", "s", TwistSplineData::id, MObject::kNullObj, &status);
 	tAttr.setHidden(true);
@@ -174,14 +214,40 @@ MStatus riderConstraint::initialize() {
 	CHECKSTAT("aParam");
 	nAttr.setKeyable(true);
 
+	aUseMin = nAttr.create("useMin", "un", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aUseMin");
+	nAttr.setKeyable(true);
+
+	aMinParam = nAttr.create("minParam", "np", MFnNumericData::kDouble, 0.0, &status);
+	CHECKSTAT("aMinParam");
+	nAttr.setKeyable(true);
+
+	aUseMax = nAttr.create("useMax", "ux", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aUseMax");
+	nAttr.setKeyable(true);
+
+	aMaxParam = nAttr.create("maxParam", "xp", MFnNumericData::kDouble, 1.0, &status);
+	CHECKSTAT("aMaxParam");
+	nAttr.setKeyable(true);
+
 	aParentInverseMatrix = mAttr.create("parentInverseMatrix", "pim", MFnMatrixAttribute::kDouble, &status);
 	CHECKSTAT("aParentInverseMatrix");
 	mAttr.setHidden(true);
 
 	aParams = cAttr.create("params", "ps", &status);
 	cAttr.setArray(true);
-	cAttr.addChild(aParam);
-	cAttr.addChild(aParentInverseMatrix);
+	status = cAttr.addChild(aParam);
+	CHECKSTAT("child aParam");
+	status = cAttr.addChild(aUseMin);
+	CHECKSTAT("child aUseMin");
+	status = cAttr.addChild(aMinParam);
+	CHECKSTAT("child aMinParam");
+	status = cAttr.addChild(aUseMax);
+	CHECKSTAT("child aUseMax");
+	status = cAttr.addChild(aMaxParam);
+	CHECKSTAT("child aMaxParam");
+	status = cAttr.addChild(aParentInverseMatrix);
+	CHECKSTAT("child aParentInverseMatrix");
 	status = addAttribute(aParams);
 	CHECKSTAT("aParams");
 
@@ -269,7 +335,9 @@ MStatus riderConstraint::initialize() {
 
 	std::vector<MObject *> iobjs = {
 		&aInputSplines, &aSpline, &aWeight, &aParams, &aParam, &aParentInverseMatrix,
-		&aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize, &aNormValue
+		&aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize, &aNormValue,
+		&aUseMin, &aMinParam, &aUseMax, &aMaxParam,
+		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam
 	};
 
 	std::vector<MObject *> oobjs = {
@@ -365,13 +433,19 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 
 		// Get the params
 		MArrayDataHandle inPAH = data.inputArrayValue(aParams, &status);
-		std::vector<double> params;
+		std::vector<double> params, pMins, pMaxs;
+		std::vector<bool> pUseMins, pUseMaxs;
 		std::vector<MMatrix> invParMats;
 
 		ecount = inPAH.elementCount();
 		inPAH.jumpToArrayElement(ecount - 1);
 		possibleMax = inPAH.elementIndex();
 		params.resize(possibleMax + 1);
+		pMins.resize(possibleMax + 1);
+		pUseMins.resize(possibleMax + 1);
+		pMaxs.resize(possibleMax + 1);
+		pUseMaxs.resize(possibleMax + 1);
+
 		invParMats.resize(possibleMax + 1);
 		inPAH.jumpToArrayElement(0);
 
@@ -379,6 +453,11 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			unsigned realIndex = inPAH.elementIndex();
 			if (realIndex > possibleMax) {
 				params.resize(realIndex+1);
+				pMins.resize(realIndex+1);
+				pMaxs.resize(realIndex+1);
+				pUseMins.resize(realIndex+1);
+				pUseMaxs.resize(realIndex+1);
+				invParMats.resize(realIndex+1);
 				possibleMax = realIndex;
 			}
 			auto inPGrp = inPAH.inputValue(&status);
@@ -386,6 +465,16 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			MDataHandle inPH = inPGrp.child(aParam);
 			double inParam = inPH.asDouble();
 			params[realIndex] = inParam;
+
+			MDataHandle inUN = inPGrp.child(aUseMin);
+			pUseMins[realIndex] = inUN.asBool();
+			MDataHandle inN = inPGrp.child(aMinParam);
+			pMins[realIndex] = inN.asDouble();
+
+			MDataHandle inUX = inPGrp.child(aUseMax);
+			pUseMaxs[realIndex] = inUX.asBool();
+			MDataHandle inX = inPGrp.child(aMaxParam);
+			pMaxs[realIndex] = inX.asDouble();
 
 			MDataHandle inPimH = inPGrp.child(aParentInverseMatrix);
 			MMatrix inPim = inPimH.asMatrix();
@@ -398,6 +487,12 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		MDataHandle gOffsetH = data.inputValue(aGlobalOffset);
 		MDataHandle gSpreadH = data.inputValue(aGlobalSpread);
 		MDataHandle useCycleH = data.inputValue(aUseCycle);
+
+		MDataHandle useGlobalMinH = data.inputValue(aUseGlobalMin);
+		MDataHandle minGlobalParamH = data.inputValue(aMinGlobalParam);
+		MDataHandle useGlobalMaxH = data.inputValue(aUseGlobalMax);
+		MDataHandle maxGlobalParamH = data.inputValue(aMaxGlobalParam);
+
 		MDataHandle normalizeH = data.inputValue(aNormalize);
 		MDataHandle normValueH = data.inputValue(aNormValue);
 
@@ -407,6 +502,10 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		double gSpread = gSpreadH.asDouble();
 		bool useCycle = useCycleH.asBool();
 
+		bool useGlobalMin = useGlobalMinH.asBool();
+		double minGlobalParam = minGlobalParamH.asDouble();
+		bool useGlobalMax = useGlobalMaxH.asBool();
+		double maxGlobalParam = maxGlobalParamH.asDouble();
 		// Loop through the splines to get the transform groups
 		// There is no single way to interpolate between orientations
 		// I'm just going to do the simple thing (for now) and N-LERP
@@ -443,6 +542,12 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				double twist, p = params[pIdx];
 				p *= gSpread;
 				p += gOffset;
+
+				if (useGlobalMin)	{ p = std::fmax(minGlobalParam, p); }
+				if (pUseMins[pIdx]) { p = std::fmax(pMins[pIdx],	p); }
+				if (useGlobalMax)	{ p = std::fmin(maxGlobalParam, p); }
+				if (pUseMaxs[pIdx]) { p = std::fmin(pMaxs[pIdx],	p); }
+
 				if (doNorm > 0.0) {
 					p = (doNorm) * (p * mp / normVal) + (1.0 - doNorm) * (p);
 				}
@@ -463,7 +568,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				mat[0][0] = tan[0]; mat[1][0] = norm[0]; mat[2][0] = binorm[0]; mat[3][0] = 0.0;
 				mat[0][1] = tan[1]; mat[1][1] = norm[1]; mat[2][1] = binorm[1]; mat[3][1] = 0.0;
 				mat[0][2] = tan[2]; mat[1][2] = norm[2]; mat[2][2] = binorm[2]; mat[3][2] = 0.0;
-				mat[0][3] = 0.0;    mat[1][3] = 0.0;     mat[2][3] = 0.0;       mat[3][3] = 1.0;
+				mat[0][3] = 0.0;	mat[1][3] = 0.0;	 mat[2][3] = 0.0;		mat[3][3] = 1.0;
 				MQuaternion q;
 				q = MMatrix(mat);
 				tquats.push_back(std::move(q));

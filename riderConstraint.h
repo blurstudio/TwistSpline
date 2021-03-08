@@ -50,6 +50,8 @@ public:
 	// inputs
 	static MObject aInputSplines;
 		static MObject aSpline;
+		static MObject aSplineLength;
+		static MObject aEndParam;
 		static MObject aWeight;
 
 	static MObject aParams;

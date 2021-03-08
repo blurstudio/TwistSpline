@@ -73,7 +73,10 @@ MObject		riderConstraint::aMaxGlobalParam;
 // inputs
 MObject		riderConstraint::aInputSplines;
 	MObject		riderConstraint::aSpline;
+	MObject		riderConstraint::aSplineLength;
+	MObject		riderConstraint::aEndParam;
 	MObject		riderConstraint::aWeight;
+
 
 MObject		riderConstraint::aParams;
 	MObject		riderConstraint::aParam;
@@ -189,12 +192,18 @@ MStatus riderConstraint::initialize() {
 	CHECKSTAT("aMaxGlobalParam");
 
 
-
-
 	// Spline input array
 	aSpline = tAttr.create("spline", "s", TwistSplineData::id, MObject::kNullObj, &status);
 	tAttr.setHidden(true);
 	CHECKSTAT("aSpline");
+
+	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance, 0.0, &status);
+	CHECKSTAT("aSplineLength");
+	uAttr.setKeyable(true);
+
+	aEndParam = nAttr.create("endParam", "ep", MFnNumericData::kDouble, 1.0, &status);
+	CHECKSTAT("aEndParam");
+	nAttr.setKeyable(true);
 
 	aWeight = nAttr.create("weight", "w", MFnNumericData::kDouble, 1.0, &status);
 	CHECKSTAT("aWeight");
@@ -204,6 +213,8 @@ MStatus riderConstraint::initialize() {
 	CHECKSTAT("aInputSplines");
 	cAttr.setArray(true);
 	cAttr.addChild(aSpline);
+	cAttr.addChild(aSplineLength);
+	cAttr.addChild(aEndParam);
 	cAttr.addChild(aWeight);
 
 	status = addAttribute(aInputSplines);
@@ -334,9 +345,9 @@ MStatus riderConstraint::initialize() {
 	attributeAffects(aRotateOrder, aRotateZ);
 
 	std::vector<MObject *> iobjs = {
-		&aInputSplines, &aSpline, &aWeight, &aParams, &aParam, &aParentInverseMatrix,
-		&aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize, &aNormValue,
-		&aUseMin, &aMinParam, &aUseMax, &aMaxParam,
+		&aInputSplines, &aSpline, &aSplineLength, &aEndParam, &aWeight, &aParams, &aParam,
+		&aParentInverseMatrix, &aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize,
+		&aNormValue, &aUseMin, &aMinParam, &aUseMax, &aMaxParam,
 		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam
 	};
 
@@ -365,25 +376,19 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		MStatus status;
 		std::vector<TwistSplineT*> splines;
 		std::vector<double> weights;
-		std::vector<std::pair<TwistSplineT*, double>> splinesWeighted;
+		std::vector<double> splineLens;
+		std::vector<double> endParams;
+
 		unsigned ecount, possibleMax;
 
 		// First, get the splines that need computing, and their weight.
 		MArrayDataHandle inSpAH = data.inputArrayValue(aInputSplines);
 		ecount = inSpAH.elementCount();
 		inSpAH.jumpToArrayElement(ecount - 1);
-		possibleMax = inSpAH.elementIndex();
-		splinesWeighted.resize(possibleMax+1);
 		inSpAH.jumpToArrayElement(0);
 
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto inSpGroup = inSpAH.inputValue();
-			unsigned realIndex = inSpAH.elementIndex();
-			if (realIndex > possibleMax) {
-				splinesWeighted.resize(realIndex+1);
-				possibleMax = realIndex;
-			}
-
 			MDataHandle inSpwH = inSpGroup.child(aWeight);
 
 			double inSpw = inSpwH.asDouble();
@@ -399,6 +404,12 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				continue;
 			}
 
+			MDataHandle inSpLenH = inSpGroup.child(aSplineLength);
+			double inSpLen = inSpLenH.asDouble();
+
+			MDataHandle endParamH = inSpGroup.child(aEndParam);
+			double endParam = endParamH.asDouble();
+
 			auto inSplineData = (TwistSplineData *)pd;
 			TwistSplineT *spline = inSplineData->getSpline();
 			if (spline == nullptr) {
@@ -406,18 +417,12 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				continue;
 			}
 
-			splinesWeighted[realIndex] = std::make_pair(spline, inSpw);
+			splines.push_back(spline);
+			weights.push_back(inSpw);
+			splineLens.push_back(inSpLen);
+			endParams.push_back(endParam);
 
 			inSpAH.next();
-		}
-
-		splines.reserve(splinesWeighted.size());
-		weights.reserve(splinesWeighted.size());
-		for (auto &spw : splinesWeighted) {
-			if (spw.first != nullptr) {
-				splines.push_back(spw.first);
-				weights.push_back(spw.second);
-			}
 		}
 
 		if (splines.size() == 0) {
@@ -520,10 +525,16 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		for (size_t sIdx = 0; sIdx<splines.size(); ++sIdx) {
 			TwistSplineT *spline = splines[sIdx];
 			if (spline == nullptr) continue;
-			const auto &lp = spline->getLockPositions();
-			double mp = lp[lp.size() - 1];
-			const auto &rmp = spline->getRemap();
-			double mrmp = rmp[rmp.size() - 1];
+
+			double mp = endParams[sIdx];
+			double mrmp = splineLens[sIdx];
+			if (mrmp == 0.0){
+				const auto &lp = spline->getLockPositions();
+				mp = lp[lp.size() - 1];
+
+                const auto &rmp = spline->getRemap();
+                mrmp = rmp[rmp.size() - 1];
+			}
 
 			std::vector<MPoint> ttrans, tscales;
 			std::vector<MQuaternion> tquats;

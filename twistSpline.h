@@ -161,14 +161,14 @@ void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Floa
 	bool capped = false;
 	for (size_t i = 0; i < params.size(); ++i) {
 		Float t = params[pOrder[i]];
-		if (!capped && t >= remap[segIdx + 1]) {
+		if (!capped && t >= params[segIdx + 1]) {
 			if (segIdx + 1 >= params.size()) {
 				capped = true;
 			}
 			++segIdx;
 		}
 		segIdxs[pOrder[i]] = segIdx;
-		segTs[pOrder[i]] = (t - remap[segIdx - 1]) / (remap[segIdx] - remap[segIdx - 1]);
+		segTs[pOrder[i]] = (t - params[segIdx - 1]) / (params[segIdx] - params[segIdx - 1]);
 	}
 }
 

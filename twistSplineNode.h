@@ -120,7 +120,7 @@ public:
 	virtual bool isBounded( const MDagPath& objPath, const MDagPath& cameraPath) const; 
 
 	virtual MBoundingBox boundingBox( const MDagPath& objPath, const MDagPath& cameraPath) const;
-	void TwistSplineDrawOverride::getDebugDraw(const MDagPath& objPath, bool &oDraw, bool &oScale) const;
+	void getDebugDraw(const MDagPath& objPath, bool &oDraw, bool &oScale) const;
 
 	virtual MUserData* prepareForDraw(
 		const MDagPath& objPath,

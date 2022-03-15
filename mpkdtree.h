@@ -27,6 +27,8 @@ SOFTWARE.
 #include <tuple>
 #include <algorithm>
 #include <math.h>
+#include "twistSplineUtils.h"
+
 
 struct ltGetter {
     size_t splitDim;

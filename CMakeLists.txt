@@ -14,6 +14,7 @@ set(SOURCE_FILES
     "twistSpline_maya.h"
     "twistSplineData.h"
     "twistSplineNode.h"
+    "twistSplineUtils.h"
     "riderConstraint.h"
     "decomposeRotation.h"
     "twistTangentNode.h"

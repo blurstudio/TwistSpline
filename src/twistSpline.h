@@ -29,7 +29,6 @@ SOFTWARE.
 #include <utility>
 #include <cmath>
 #include <numeric>
-#include "mpkdtree.h"
 #include "twistSplineUtils.h"
 
 

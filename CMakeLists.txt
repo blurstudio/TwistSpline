@@ -1,36 +1,39 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.9)
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/modules)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 project(TwistSpline)
+
+set(CMAKE_CXX_STANDARD 14)
+cmake_policy(SET CMP0072 NEW)
+
+set(MAYA_VERSION 2020 CACHE STRING "Maya version")
+
 find_package(Maya REQUIRED)
 find_package(OpenGL REQUIRED)
-set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/../output/Maya${MAYA_VERSION})
 
 set(SOURCE_FILES
-    "mpkdtree.h"
+    "src/twistSpline.h"
+    "src/twistSpline_maya.h"
+    "src/twistSplineData.h"
+    "src/twistSplineNode.h"
+    "src/twistSplineUtils.h"
+    "src/riderConstraint.h"
+    "src/decomposeRotation.h"
+    "src/twistTangentNode.h"
 
-    "twistSpline.h"
-    "twistSpline_maya.h"
-    "twistSplineData.h"
-    "twistSplineNode.h"
-    "twistSplineUtils.h"
-    "riderConstraint.h"
-    "decomposeRotation.h"
-    "twistTangentNode.h"
-
-    "pluginMain.cpp"
-    "twistSplineData.cpp"
-    "twistSplineNode.cpp"
-    "riderConstraint.cpp"
-    "twistTangentNode.cpp"
+    "src/pluginMain.cpp"
+    "src/twistSplineData.cpp"
+    "src/twistSplineNode.cpp"
+    "src/riderConstraint.cpp"
+    "src/twistTangentNode.cpp"
 )
 
-include_directories(${MAYA_INCLUDE_DIR})
-link_directories(${MAYA_LIBRARY_DIR})
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
-target_link_libraries(${PROJECT_NAME} ${MAYA_LIBRARIES} ${OPENGL_LIBRARY})
-
+target_include_directories(${PROJECT_NAME} 
+    PRIVATE Maya::Maya
+    PUBLIC "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE Maya::Maya OpenGL::GL)
 MAYA_PLUGIN(${PROJECT_NAME})
-install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION plug-ins)
 

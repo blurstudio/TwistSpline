@@ -29,6 +29,7 @@ SOFTWARE.
 #include <utility>
 #include <cmath>
 #include <numeric>
+#include <algorithm>
 #include "twistSplineUtils.h"
 
 
@@ -644,7 +645,6 @@ private:
 	size_t projSteps; // The number of steps for a closest point lookup
 	size_t lutSteps; // The number of sub-segments per spline segment
 	Float totalLength;
-	KDNode<Point, Vector, Float> *kdTree;
 
 public:
 	TwistSpline() { lutSteps = 20; }
@@ -679,7 +679,6 @@ public:
 		this->projSteps = old.projSteps;
 		this->lutSteps = old.lutSteps;
 		this->totalLength = old.totalLength;
-		// specifically skipping the kdtree for now. Maybe later
 		size_t numVerts = size(verts);
 		if (numVerts < 2) {
 			segments.clear();
@@ -796,11 +795,6 @@ public:
 			}
 		}
 		return pLut;
-	}
-
-	/// Clear the closest point lookup kd-tree
-	void clearKDTree() {
-		if (kdTree) delete kdTree;
 	}
 
 	/// Build the internal segment objects
@@ -992,58 +986,6 @@ public:
 		for (size_t i = res.size() - 1; i-- > 0; ) {
 			res[i] = res[i] - mat[i][2] * res[i + 1];
 		}
-	}
-
-	/// Build the KD-Tree for closest point lookup
-	void buildKDTree() {
-		// Only need the units for building the kdtree. No reason to build them
-		// outside of this method
-
-		// group the lines together and build the kdtree
-		std::vector<Point *> pLut;
-		pLut.reserve(segments.size() * (lutSteps + 1));
-
-		std::vector<std::tuple<Point *, Point *, Vector *, size_t, size_t>> lines;
-		lines.reserve(segments.size() * lutSteps);
-
-		for (size_t i = 0; i < segments.size(); ++i) {
-			auto &seg = segments[i];
-			auto &pa = seg->getPoints();
-			auto &un = seg->getUnits();
-			for (size_t j = 0; j < size(pa); ++j) {
-				pLut.push_back(&pa[j]);
-				if (j > 0) {
-					lines.push_back(std::make_tuple(&pa[j - 1], &pa[j], &un[j - 1], i, j));
-				}
-			}
-		}
-
-		size_t sLut = pLut.size() - 1;
-		Point maxBounds(*(pLut[sLut])), minBounds(*(pLut[sLut]));
-		for (auto &p : pLut) {
-			auto &pp = *p;
-			for (size_t d = 0; d < 3; ++d) {
-				Float bb = pp[d];
-				if (bb < minBounds[d]) minBounds[d] = bb;
-				if (bb > maxBounds[d]) maxBounds[d] = bb;
-			}
-		}
-
-		kdTree = KDNode<Point, Vector, Float>::split(pLut, lines, maxBounds, minBounds);
-	}
-
-	/// Get the closest point to a given sample
-	Point getClosestPoint(const Point &q) const {
-		Point closest;
-		Float curD2 = std::numeric_limits<Float>::max();
-		std::array<Float, 3> off;
-		kdTree->closestPoint(q, closest, curD2, 0.0, off);
-		return closest;
-	}
-
-	/// Get the closest parameter to the given sample. Could be more optimal
-	Float getClosestParam(const Point &q) const {
-		return 0.0; // TODO
 	}
 
 	/// Get the matrix at a given parameter. Specify whether to use the twist values or not

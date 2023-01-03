@@ -3,8 +3,8 @@ name: build
 on:
   push:
     branches: [ master ]
-   #tags:
-   #  - v*
+    tags:
+      - v*
   pull_request:
     branches: [ master ]
 
@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only run on e.g. v0.1.0
-   #if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Checkout code

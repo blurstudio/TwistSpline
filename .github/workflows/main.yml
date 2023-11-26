@@ -203,7 +203,7 @@ jobs:
       - name: Repath Artifacts
         run: |
           mkdir -p artifacts/plug-ins
-          cp "./build/${{env.BUILD_TYPE}}/TwistSpline.so" "artifacts/plug-ins"
+          cp "./build/TwistSpline.so" "artifacts/plug-ins"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3

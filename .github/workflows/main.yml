@@ -2,11 +2,11 @@ name: build
 
 on:
   push:
-    branches: [ master , main]
+    branches: [ master ]
     tags:
       - v*
   pull_request:
-    branches: [ master , main]
+    branches: [ master ]
 
 env:
   BUILD_TYPE: Release

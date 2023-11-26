@@ -185,6 +185,10 @@ jobs:
         with:
           submodules: true
 
+      - name: Install OpenGL libraries
+        run: |
+          sudo apt install libglu1-mesa-dev
+
       - name: Install devkit
         run: |
           curl -o devkit.tgz ${{matrix.devkit}}

@@ -166,7 +166,7 @@ jobs:
 
   maya-linux:
     runs-on: ubuntu-latest
-    container: scottenglert/maya-build:${{matrix.maya}}
+    # container: scottenglert/maya-build:${{matrix.maya}}
 
     strategy:
       fail-fast: false

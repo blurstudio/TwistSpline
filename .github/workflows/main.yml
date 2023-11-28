@@ -23,7 +23,7 @@ jobs:
   #
   #
   maya-win:
-    runs-on: [windows-2019 - windows-latest]
+    runs-on: windows-latest
 
     strategy:
       # Without this, all containers stop if any fail
@@ -73,7 +73,7 @@ jobs:
 
   # Splitting mac-os into two different steps, as 2024 was made compatible with new arm architecture.
   maya-macos-x86_64:
-    runs-on: macos-10.5
+    runs-on: macos-latest
 
     strategy:
       fail-fast: false
@@ -120,7 +120,7 @@ jobs:
             artifacts/plug-ins/TwistSpline.bundle
 
   maya-macos-arm64:
-    runs-on: [macos-11, macos-latest]
+    runs-on: macos-latest
 
     strategy:
       fail-fast: false

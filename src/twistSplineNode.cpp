@@ -44,6 +44,7 @@ SOFTWARE.
 
 #include <string>
 #include <iostream>
+#include <limits>
 
 #include "twistSpline.h"
 #include "twistSplineData.h"

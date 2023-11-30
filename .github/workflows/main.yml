@@ -115,10 +115,11 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: mac-${{matrix.maya}}-x86_64
+          name: mac-${{matrix.maya}}
           path: |
             artifacts/plug-ins/TwistSpline.bundle
 
+  # This will be compiled for both x86_64 and arm64 architectures, as arm support has been added starting from Maya 2024.
   maya-macos-arm64:
     runs-on: macos-latest
 
@@ -160,7 +161,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: mac-${{matrix.maya}}-arm64
+          name: mac-${{matrix.maya}}
           path: |
             artifacts/plug-ins/TwistSpline.bundle
 

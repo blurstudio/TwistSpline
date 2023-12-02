@@ -16,15 +16,17 @@ TwistSplineGeometryOverride::~TwistSplineGeometryOverride() {}
 
 void TwistSplineGeometryOverride::updateDG() {
 	/*
-	 Pull (evaluate) all attributes in TwistSplineNodeNode node we will be using
-	 Here is the list of attributes we are pulling :
-	 - geometryChanging: Needed by requiresGeometryUpdate() to check if we
-		   needs to update the vertex and index buffer.
-	 - outputSize: Needed by populateGeometry() to generate the geometry.
+		Pull (evaluate) all attributes in TwistSplineNodeNode node we will be
+		using. Here is the list of attributes we are pulling :
+		- geometryChanging: Needed by requiresGeometryUpdate() to check if we
+		   needs to update the vertex and index buffer;
+		- debugDisplay: Needed by addUIDrawables() to draw debug mode;
+		- debugScale: Needed by addUIDrawables() to draw debug mode scale;
+		- outputSpline: Needed by addUIDrawables() to draw the main spline;
 
-	 It is very important that all the attributes pulled from this method are
-	 cached (with Technique 1) otherwise Evaluation Cache will not work. In
-	 fact, this method is not needed by EM Evaluation modes.
+		It is very important that all the attributes pulled from this method are
+		cached (with Technique 1) otherwise Evaluation Cache will not work. In
+		fact, this method is not needed by EM Evaluation modes.
 	*/
 	mTwistSplineNode->updateRenderAttributes();
 }
@@ -32,16 +34,17 @@ void TwistSplineGeometryOverride::updateDG() {
 bool TwistSplineGeometryOverride::requiresUpdateRenderItems(
 	const MDagPath& path) const {
 	/*
-	 Override this function if you need a more complicated animated-material
-	 behavior For example, you will need to change this to `return true` if
-	 object's associated shader is changing at every frame. (This could be very
-	 expensive)
+		Override this function if you need a more complicated animated-material
+		behavior For example, you will need to change this to `return true` if
+		object's associated shader is changing at every frame. (This could be
+		very expensive).
 
-	 Note 1: this method have to return 'false' in most case, otherwise
-	 VP2 caching may not work
+		Note 1: this method have to return 'false' in most case, otherwise
+		VP2 caching may not work.
 
-	 Note 2: for rendering simple animated-material like animated-color or
-	 animated-texture-uv check FootPrintGeometryOverrideAnimatedMaterial example
+		Note 2: for rendering simple animated-material like animated-color or
+		animated-texture-uv check FootPrintGeometryOverrideAnimatedMaterial
+		example.
 	*/
 	return false;
 }
@@ -53,19 +56,20 @@ bool TwistSplineGeometryOverride::requiresUpdateRenderItems(
 //---------------------------------------------------------------------------
 
 /*
- Return true when 'inputSize' is changed in the TwistSplineNodeNode which
- requires us to re-generate the geometry. Note: this method must return the
- exact same value in a cache-restoration frame as it was in the corresponding
- cache-store frame.
+	Return true when the aOutputSpline changes, which requires us to re-generate
+   the geometry.
+
+   Note: this method must return the exact same value in a cache-restoration
+   frame as it was in the corresponding cache-store frame.
 */
 bool TwistSplineGeometryOverride::requiresGeometryUpdate() const {
 	/*
-	 Checking the "TwistSplineNodeNode::geometryChanging" attribute if any
-	 attribute affecting the geometry is changing,
-	 "TwistSplineNodeNode::geometryChanging" should be affected and dirtied.
-	 Also check TwistSplineNodeNodometry(). Warning: this method may be called
-	 outside of regular { update() : cleanUp() } scope. Thus, we must invoke
-	 node-local evaluation to ensure the correctness.
+		Checking the "TwistSplineNodeNode::geometryChanging" attribute if any
+		attribute affecting the geometry is changing,
+		"TwistSplineNodeNode::geometryChanging" should be affected and dirtied.
+		Also check TwistSplineNodeNodometry(). Warning: this method may be
+		called outside of regular { update() : cleanUp() } scope. Thus, we must
+		invoke node-local evaluation to ensure the correctness.
 	*/
 	return mTwistSplineNode->isGeometryChanging();
 }
@@ -152,18 +156,20 @@ void TwistSplineGeometryOverride::addUIDrawables(
 // Return true if internal tracing is desired.
 bool TwistSplineGeometryOverride::traceCallSequence() const {
 	/*
-	Tracing will look something like the following when in shaded mode (on
-	selection change):
-	  FootPrintGeometryOverride: Geometry override DG update: footPrint1
-	  FootPrintGeometryOverride: Start geometry override render item
-		update:|transform1|footPrint1 FootPrintGeometryOverride: - Call API
-	to update render items FootPrintGeometryOverride: End geometry override
-		render item update: |transform1|footPrint1
-	FootPrintGeometryOverride: End geometry override clean up: footPrint1
+		Tracing will look something like the following when in shaded mode (on
+		selection change):
+		- TwistSplineGeometryOverride: Geometry override DG update: twistSpline1
+		- TwistSplineGeometryOverride: Start geometry override render item
+	   update: |transform1|twistSpline1
+		- TwistSplineGeometryOverride: - Call API to update render items
+		- TwistSplineGeometryOverride: End geometry override render item update:
+		|transform1|twistSpline1
+		- TwistSplineGeometryOverride: End geometry override clean up:
+		twistSpline1
 
-	This is based on the existing stream and indexing dirty flags being used
-	which attempts to minimize the amount of render item, vertex buffer and
-	indexing update.
+		This is based on the existing stream and indexing dirty flags being used
+		which attempts to minimize the amount of render item, vertex buffer and
+		indexing update.
 	*/
 	return false;
 }

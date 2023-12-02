@@ -395,18 +395,17 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		(and are not eligible for caching).
 		2. Input attributes are never cached in Evaluation Cache.
 
-	In FootPrintNode, attributes "outputSize", "geometryChanging" are virtually
-	connected to the renderer. But EM does not understand these "virtual
-	connection", and skips evaluation and caching for them. The current
-	workaround are:
-	1. To bypass rule 2, we made them a passing-through output attributes :
-	inputSize->outputSize
-	2. To bypass rule 1, repeat the affect relationship in setDependentsDirty().
-		[*]
-		[*] Note, this is a trick that relies on some internal hack to EM.
-			Maya may provide better API for this in future updates.
-			When proper force evaluation API is come, you won't need to override
-			this method.
+	In TwistSplineNode, attribute "geometryChanging" is virtually connected to the
+	renderer. But EM does not understand these "virtual connection", and skips
+	evaluation and caching for them. The current workaround are:
+		1. To bypass rule 2, we made them a passing-through output attributes :
+		inputSize->outputSize
+		2. To bypass rule 1, repeat the affect relationship in setDependentsDirty().
+			[*]
+			[*] Note, this is a trick that relies on some internal hack to EM.
+				Maya may provide better API for this in future updates.
+				When proper force evaluation API is come, you won't need to override
+				this method.
 */
 MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 											MPlugArray& plugArray) {
@@ -415,14 +414,14 @@ MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 	// No need to do this outside of EM graph construction (for the sake of
 	// performance)
 	if (MEvaluationManager::graphConstructionActive()) {
-		if (plug.partialName() == "inTangent" |
-			plug.partialName() == "outTangent" |
-			plug.partialName() == "controlVertex" |
-			plug.partialName() == "paramValue" |
-			plug.partialName() == "paramWeight" |
-			plug.partialName() == "twistWeight" |
-			plug.partialName() == "twistValue" |
-			plug.partialName() == "useOrient" |
+		if (plug.partialName() == "inTangent" ||
+			plug.partialName() == "outTangent" ||
+			plug.partialName() == "controlVertex" ||
+			plug.partialName() == "paramValue" ||
+			plug.partialName() == "paramWeight" ||
+			plug.partialName() == "twistWeight" ||
+			plug.partialName() == "twistValue" ||
+			plug.partialName() == "useOrient" ||
 			plug.partialName() == "maxVertices") {
 			MObject thisNode = thisMObject();
 			MPlug geometryChangingPlug(thisNode, aGeometryChanging);
@@ -431,7 +430,7 @@ MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 	}
 	// Try not set any data or attribute value in this method
 	// Because EM's parallel evaluation will not call this method at all
-	// A widely used *bad* approach is to write "mGeometryChanged=true" when
+	// A widely used *bad* approach is to write "aGeometryChanged=true" when
 	// some attribute changed. Use Technique 1.1 to avoid this.
 	return MStatus::kSuccess;
 }
@@ -470,19 +469,17 @@ void TwistSplineNode::getCacheSetup(const MEvaluationNode& evalNode,
 								 true);
 }
 
-void* TwistSplineNode::creator() {
-	return new TwistSplineNode();
-}
+void* TwistSplineNode::creator() { return new TwistSplineNode(); }
 
 // Must be called after MPxGeometryOverride::updateDG()
 // Typically used by MPxGeometryOverride::requiresGeometryUpdate()
 bool TwistSplineNode::isGeometryChanging() const {
 	MDataBlock block = const_cast<TwistSplineNode*>(this)->forceCache();
 	// Use inputValue() to trigger evaluation here
-	// Because MPxGeometryOverride::requiresGeometryUpdate() can be called outside
-	// of MPxGeometryOverride::initialize()/updateDG() This evaluation is safe
-	// because this attribute cannot be connected And thus cannot reach other
-	// nodes
+	// Because MPxGeometryOverride::requiresGeometryUpdate() can be called
+	// outside of MPxGeometryOverride::initialize()/updateDG() This evaluation
+	// is safe because this attribute cannot be connected And thus cannot reach
+	// other nodes
 	return block.inputValue(TwistSplineNode::aGeometryChanging).asBool();
 }
 
@@ -494,7 +491,6 @@ void TwistSplineNode::updateRenderAttributes() {
 	datablock.inputValue(TwistSplineNode::aGeometryChanging);
 	datablock.inputValue(TwistSplineNode::aDebugDisplay);
 	datablock.inputValue(TwistSplineNode::aDebugScale);
-	datablock.inputValue(TwistSplineNode::aSplineLength);
 	datablock.inputValue(TwistSplineNode::aOutputSpline);
 }
 
@@ -510,10 +506,14 @@ TwistSplineNode::GeometryParameters TwistSplineNode::updatingGeometry() {
 	block.outputValue(TwistSplineNode::aGeometryChanging).set(false);
 
 	GeometryParameters param;
-	param.debugMode = block.outputValue(TwistSplineNode::aDebugDisplay).asBool();
-	param.debugScale = block.outputValue(TwistSplineNode::aDebugScale).asDouble();
-	param.splineLength = block.outputValue(TwistSplineNode::aSplineLength).asDouble();
-	param.splineData = block.outputValue(TwistSplineNode::aOutputSpline).asPluginData();
+	param.debugMode =
+		block.outputValue(TwistSplineNode::aDebugDisplay).asBool();
+	param.debugScale =
+		block.outputValue(TwistSplineNode::aDebugScale).asDouble();
+	param.splineLength =
+		block.outputValue(TwistSplineNode::aSplineLength).asDouble();
+	param.splineData =
+		block.outputValue(TwistSplineNode::aOutputSpline).asPluginData();
 
 	return param;
 }

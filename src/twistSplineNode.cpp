@@ -26,6 +26,7 @@ SOFTWARE.
 #include <maya/MPlug.h>
 #include <maya/MDataBlock.h>
 #include <maya/MDataHandle.h>
+#include <maya/MEvaluationManager.h>
 #include <maya/MGlobal.h>
 #include <maya/MFnCompoundAttribute.h>
 #include <maya/MFnMatrixAttribute.h>
@@ -42,6 +43,7 @@ SOFTWARE.
 #include <maya/MPxGeometryOverride.h>
 #include <maya/MQuaternion.h>
 
+#include <cassert>
 #include <string>
 #include <iostream>
 #include <limits>
@@ -237,7 +239,6 @@ void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
 
 }
 
-
 MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 	if (plug == aOutputSpline) {
 		MStatus status;
@@ -380,6 +381,93 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		return MS::kUnknownParameter;
 	}
 	return MS::kSuccess;
+}
+
+/*
+	Technique 1: Hack the EM to force evaluate and cache attributes.
+	To improve performance, Evaluation Manager aggressively skips evaluation of
+	attributes which are not connected to other nodes. In cases where an external
+	user of DG data (in this case the renderer) needs to read unconnected values
+	from a node during or after EM evaluation, we need to take extra steps to
+	ensure the data is evaluated by the EM (and cached). The most notable rules
+	used by the EM for skipping evaluation are:
+		1. Output attributes without output-connections are not computed in EM
+		(and are not eligible for caching).
+		2. Input attributes are never cached in Evaluation Cache.
+
+	In FootPrintNode, attributes "outputSize", "geometryChanging" are virtually
+	connected to the renderer. But EM does not understand these "virtual
+	connection", and skips evaluation and caching for them. The current
+	workaround are:
+	1. To bypass rule 2, we made them a passing-through output attributes :
+	inputSize->outputSize
+	2. To bypass rule 1, repeat the affect relationship in setDependentsDirty().
+		[*]
+		[*] Note, this is a trick that relies on some internal hack to EM.
+			Maya may provide better API for this in future updates.
+			When proper force evaluation API is come, you won't need to override
+			this method.
+*/
+MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
+											MPlugArray& plugArray) {
+	// Repeating the affect relationship we have specified.
+	// This method just mean to trick EM.
+	// No need to do this outside of EM graph construction (for the sake of
+	// performance)
+	if (MEvaluationManager::graphConstructionActive()) {
+		if (plug.partialName() == "inTangent" |
+			plug.partialName() == "outTangent" |
+			plug.partialName() == "controlVertex" |
+			plug.partialName() == "paramValue" |
+			plug.partialName() == "paramWeight" |
+			plug.partialName() == "twistWeight" |
+			plug.partialName() == "twistValue" |
+			plug.partialName() == "useOrient" |
+			plug.partialName() == "maxVertices") {
+			MObject thisNode = thisMObject();
+			MPlug geometryChangingPlug(thisNode, aGeometryChanging);
+			plugArray.append(geometryChangingPlug);
+		}
+	}
+	// Try not set any data or attribute value in this method
+	// Because EM's parallel evaluation will not call this method at all
+	// A widely used *bad* approach is to write "mGeometryChanged=true" when
+	// some attribute changed. Use Technique 1.1 to avoid this.
+	return MStatus::kSuccess;
+}
+
+MStatus TwistSplineNode::postEvaluation(const MDGContext& context,
+										const MEvaluationNode& evaluationNode,
+										PostEvaluationType evalType) {
+	// For cache restoration only.
+	// This method is responsible for fixing the 'geometryChanging' flag in
+	// cache restore frames Because in cache store phase, PopulateGeometry &
+	// Viewport-Caching happens before Evaluation-Cache store The value of
+	// 'geometryChanging' will always be set to 'false' (it is already used by
+	// render) Thus, we have to fix the geometryChanging attribute to the
+	// correct value.
+	MStatus status;
+	// kEvaluateDirectly indicates we are restoring from cache.
+	if (evalType == PostEvaluationEnum::kEvaluatedDirectly &&
+		evaluationNode.dirtyPlugExists(aGeometryChanging, &status) && status) {
+		MDataBlock data = forceCache();
+		MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
+		if (status != MStatus::kSuccess) return status;
+		boolHandle.setBool(true);
+		boolHandle.setClean();
+	}
+	return MPxLocatorNode::postEvaluation(context, evaluationNode, evalType);
+}
+
+void TwistSplineNode::getCacheSetup(const MEvaluationNode& evalNode,
+									MNodeCacheDisablingInfo& disablingInfo,
+									MNodeCacheSetupInfo& cacheSetupInfo,
+									MObjectArray& monitoredAttributes) const {
+	MPxLocatorNode::getCacheSetup(evalNode, disablingInfo, cacheSetupInfo,
+								  monitoredAttributes);
+	assert(!disablingInfo.getCacheDisabled());
+	cacheSetupInfo.setPreference(MNodeCacheSetupInfo::kWantToCacheByDefault,
+								 true);
 }
 
 void* TwistSplineNode::creator() {

@@ -56,9 +56,15 @@ public:
 	virtual	~TwistSplineNode();
 
 	virtual	MStatus	compute( const MPlug& plug, MDataBlock& data );
-	//virtual MStatus preEvaluation(const  MDGContext& context, const MEvaluationNode& evaluationNode);
-	//virtual MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray);
-	static	void*	creator();
+    MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray) override;
+	MStatus postEvaluation(const MDGContext& context,
+						   const MEvaluationNode& evaluationNode,
+						   PostEvaluationType evalType) override;
+	void getCacheSetup(const MEvaluationNode& evalNode,
+					   MNodeCacheDisablingInfo& disablingInfo,
+					   MNodeCacheSetupInfo& cacheSetupInfo,
+					   MObjectArray& monitoredAttributes) const override;
+	static void* creator();
 	static	MStatus	initialize();
 	virtual bool	isBounded() const {
 		return true;

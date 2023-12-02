@@ -88,11 +88,6 @@ void TwistSplineGeometryOverride::addUIDrawables(
 	auto splineData = mTwistSplineNode->getSplineData();
 	auto splinePoints = splineData->getPoints();
 
-	// get correct color based on the state of object, e.g. active or
-	// dormant
-    MColor color = MHWRender::MGeometryUtilities::wireframeColor(path);
-    drawManager.setColor(color);
-
 	bool debugDraw;
 	double debugScale;
 	mTwistSplineNode->getDebugDraw(debugDraw, debugScale);
@@ -102,8 +97,12 @@ void TwistSplineGeometryOverride::addUIDrawables(
 
 	drawManager.beginDrawable(MUIDrawManager::kSelectable);
 
-	drawManager.setDepthPriority(
-		MHWRender::MRenderItem::sActiveLineDepthPriority);
+	// Get correct color based on the state of object, e.g. active or
+	// dormant.
+	MHWRender::DisplayStatus displayStatus =
+		MHWRender::MGeometryUtilities::displayStatus(path);
+	MColor color = MHWRender::MGeometryUtilities::wireframeColor(path);
+	drawManager.setColor(color);
 	drawManager.lineStrip(splinePoints, draw2D);
 
 	if (debugDraw) {

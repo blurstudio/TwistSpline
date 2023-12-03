@@ -374,8 +374,9 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 	else if (plug == aGeometryChanging) {
 		MStatus status;
 		MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
-		CHECK_MSTATUS_AND_RETURN_IT(status);
+		MCHECKERROR(status);
 		boolHandle.setBool(true);
+		boolHandle.setClean();
 	}
 	else {
 		return MS::kUnknownParameter;
@@ -510,8 +511,6 @@ TwistSplineNode::GeometryParameters TwistSplineNode::updatingGeometry() {
 		block.outputValue(TwistSplineNode::aDebugDisplay).asBool();
 	param.debugScale =
 		block.outputValue(TwistSplineNode::aDebugScale).asDouble();
-	param.splineLength =
-		block.outputValue(TwistSplineNode::aSplineLength).asDouble();
 	param.splineData =
 		block.outputValue(TwistSplineNode::aOutputSpline).asPluginData();
 

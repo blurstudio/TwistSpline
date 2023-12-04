@@ -84,8 +84,6 @@ jobs:
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2022/Autodesk_Maya_2022_5_Update_DEVKIT_Mac.dmg"
           - maya: "2023"
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2023/Autodesk_Maya_2023_3_Update_DEVKIT_Mac.dmg"
-          - maya: "2024"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Mac.dmg"
 
     steps:
       - name: Checkout code
@@ -117,10 +115,11 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: mac-${{matrix.maya}}-x86_64
+          name: mac-${{matrix.maya}}
           path: |
             artifacts/plug-ins/TwistSpline.bundle
 
+  # This will be compiled for both x86_64 and arm64 architectures, as arm support has been added starting from Maya 2024.
   maya-macos-arm64:
     runs-on: macos-latest
 
@@ -149,7 +148,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -G Xcode -DCMAKE_OSX_ARCHITECTURES=arm64 -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DMAYA_VERSION=${{matrix.maya}} -DMAYA_DEVKIT_BASE="/Volumes/devkitBase"
+          cmake -G Xcode -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DMAYA_VERSION=${{matrix.maya}} -DMAYA_DEVKIT_BASE="/Volumes/devkitBase"
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
@@ -162,7 +161,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: mac-${{matrix.maya}}-arm64
+          name: mac-${{matrix.maya}}
           path: |
             artifacts/plug-ins/TwistSpline.bundle
 

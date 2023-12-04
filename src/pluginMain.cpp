@@ -26,25 +26,26 @@ SOFTWARE.
 #include "twistSplineData.h"
 #include "riderConstraint.h"
 #include "twistTangentNode.h"
+#include "drawOverride.h"
 #include <maya/MFnPlugin.h>
 
-MStatus initializePlugin( MObject obj ) { 
+MStatus initializePlugin( MObject obj ) {
 	MStatus   status;
-	MFnPlugin plugin( obj, "BlurStudio", "2018", "Any");
+	MFnPlugin plugin( obj, "BlurStudio", "2023", "Any");
 
 	status = plugin.registerData("twistSplineData", TwistSplineData::id, TwistSplineData::creator);
 	if (!status) {
 		status.perror("Failed to register twistSplineData");
 		return status;
 	}
-	
+
 	status = plugin.registerNode(
 		"twistSpline",
 		TwistSplineNode::id,
-		TwistSplineNode::creator,
-		TwistSplineNode::initialize,
+		&TwistSplineNode::creator,
+		&TwistSplineNode::initialize,
 		MPxNode::kLocatorNode,
-		sUseLegacyDraw ? NULL : &TwistSplineNode::drawDbClassification
+		&TwistSplineNode::drawDbClassification
 	);
 
 	if (!status) {
@@ -76,15 +77,13 @@ MStatus initializePlugin( MObject obj ) {
 		return status;
 	}
 
-	if (sUseLegacyDraw)	return status;
-
-	status = MHWRender::MDrawRegistry::registerDrawOverrideCreator(
+	status = MHWRender::MDrawRegistry::registerGeometryOverrideCreator(
 		TwistSplineNode::drawDbClassification,
 		TwistSplineNode::drawRegistrantId,
-		TwistSplineDrawOverride::Creator
+		TwistSplineGeometryOverride::Creator
 	);
 	if (!status) {
-		status.perror("Faild to register TwistSpline DrawOverrideCreator");
+		status.perror("Faild to register TwistSpline GeometryOverrideCreator");
 		return status;
 	}
 	return status;
@@ -106,12 +105,10 @@ MStatus uninitializePlugin(MObject obj) {
 	tangentStat = plugin.deregisterNode(TwistTangentNode::id);
 	if (!tangentStat) nodeStat.perror("Failed to de-register twistTangent Node");
 
-	if (!sUseLegacyDraw) {
-		drawStat = MHWRender::MDrawRegistry::deregisterDrawOverrideCreator(
-			TwistSplineNode::drawDbClassification,
-			TwistSplineNode::drawRegistrantId);
-		if (!drawStat) drawStat.perror("deregisterDrawOverrideCreator");
-	}
+	drawStat = MDrawRegistry::deregisterGeometryOverrideCreator(
+		TwistSplineNode::drawDbClassification,
+		TwistSplineNode::drawRegistrantId);
+	if (!drawStat) drawStat.perror("deregisterGeometryOverrideCreator");
 
 	if (!nodeStat) return nodeStat;
 	if (!dataStat) return dataStat;

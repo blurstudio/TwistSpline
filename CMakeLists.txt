@@ -16,6 +16,7 @@ find_package(Maya REQUIRED)
 find_package(OpenGL REQUIRED)
 
 set(SOURCE_FILES
+    "src/drawOverride.h"
     "src/twistSpline.h"
     "src/twistSpline_maya.h"
     "src/twistSplineData.h"
@@ -26,6 +27,7 @@ set(SOURCE_FILES
     "src/twistTangentNode.h"
 
     "src/pluginMain.cpp"
+    "src/drawOverride.cpp"
     "src/twistSplineData.cpp"
     "src/twistSplineNode.cpp"
     "src/riderConstraint.cpp"
@@ -33,7 +35,7 @@ set(SOURCE_FILES
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
-target_include_directories(${PROJECT_NAME} 
+target_include_directories(${PROJECT_NAME}
     PRIVATE Maya::Maya
     PUBLIC "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}"
 )

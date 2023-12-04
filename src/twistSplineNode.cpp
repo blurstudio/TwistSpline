@@ -26,6 +26,7 @@ SOFTWARE.
 #include <maya/MPlug.h>
 #include <maya/MDataBlock.h>
 #include <maya/MDataHandle.h>
+#include <maya/MEvaluationManager.h>
 #include <maya/MGlobal.h>
 #include <maya/MFnCompoundAttribute.h>
 #include <maya/MFnMatrixAttribute.h>
@@ -42,6 +43,7 @@ SOFTWARE.
 #include <maya/MPxGeometryOverride.h>
 #include <maya/MQuaternion.h>
 
+#include <cassert>
 #include <string>
 #include <iostream>
 #include <limits>
@@ -73,6 +75,7 @@ MObject TwistSplineNode::aTwistValue;
 MObject TwistSplineNode::aTwistWeight;
 MObject TwistSplineNode::aUseOrient;
 
+MObject TwistSplineNode::aGeometryChanging;
 MObject TwistSplineNode::aDebugDisplay;
 MObject TwistSplineNode::aDebugScale;
 MObject TwistSplineNode::aMaxVertices;
@@ -96,6 +99,12 @@ MStatus TwistSplineNode::initialize() {
 	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
 	nAttr.setWritable(false);
 	addAttribute(aSplineLength);
+
+	aGeometryChanging = nAttr.create("geometryChanging", "gch", MFnNumericData::kBoolean, true);
+	nAttr.setStorable(false);
+	nAttr.setHidden(true);
+	nAttr.setConnectable(false);
+	addAttribute(aGeometryChanging);
 
 	//--------------- Input -------------------
 
@@ -163,6 +172,17 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aOutTangent, aSplineLength);
 	attributeAffects(aMaxVertices, aSplineLength);
 
+	// Geometry changing
+	attributeAffects(aInTangent, aGeometryChanging);
+	attributeAffects(aControlVertex, aGeometryChanging);
+	attributeAffects(aOutTangent, aGeometryChanging);
+	attributeAffects(aParamValue, aGeometryChanging);
+	attributeAffects(aParamWeight, aGeometryChanging);
+	attributeAffects(aTwistWeight, aGeometryChanging);
+	attributeAffects(aTwistValue, aGeometryChanging);
+	attributeAffects(aUseOrient, aGeometryChanging);
+	attributeAffects(aMaxVertices, aGeometryChanging);
+
 	return MS::kSuccess;
 }
 
@@ -216,9 +236,8 @@ void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
 			scalePlug.getValue(oScale);
 		}
 	}
-	
-}
 
+}
 
 MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 	if (plug == aOutputSpline) {
@@ -352,157 +371,148 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		outHandle.setDouble(spline->getTotalLength());
 		data.setClean(aSplineLength);
 	}
+	else if (plug == aGeometryChanging) {
+		MStatus status;
+		MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
+		MCHECKERROR(status);
+		boolHandle.setBool(true);
+		boolHandle.setClean();
+	}
 	else {
 		return MS::kUnknownParameter;
 	}
 	return MS::kSuccess;
 }
 
-void* TwistSplineNode::creator() {
-	return new TwistSplineNode();
+/*
+	Technique 1: Hack the EM to force evaluate and cache attributes.
+	To improve performance, Evaluation Manager aggressively skips evaluation of
+	attributes which are not connected to other nodes. In cases where an external
+	user of DG data (in this case the renderer) needs to read unconnected values
+	from a node during or after EM evaluation, we need to take extra steps to
+	ensure the data is evaluated by the EM (and cached). The most notable rules
+	used by the EM for skipping evaluation are:
+		1. Output attributes without output-connections are not computed in EM
+		(and are not eligible for caching).
+		2. Input attributes are never cached in Evaluation Cache.
+
+	In TwistSplineNode, attribute "geometryChanging" is virtually connected to the
+	renderer. But EM does not understand these "virtual connection", and skips
+	evaluation and caching for them. The current workaround are:
+		1. To bypass rule 2, we made them a passing-through output attributes :
+		inputSize->outputSize
+		2. To bypass rule 1, repeat the affect relationship in setDependentsDirty().
+			[*]
+			[*] Note, this is a trick that relies on some internal hack to EM.
+				Maya may provide better API for this in future updates.
+				When proper force evaluation API is come, you won't need to override
+				this method.
+*/
+MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
+											MPlugArray& plugArray) {
+	// Repeating the affect relationship we have specified.
+	// This method just mean to trick EM.
+	// No need to do this outside of EM graph construction (for the sake of
+	// performance)
+	if (MEvaluationManager::graphConstructionActive()) {
+		if (plug.partialName() == "inTangent" ||
+			plug.partialName() == "outTangent" ||
+			plug.partialName() == "controlVertex" ||
+			plug.partialName() == "paramValue" ||
+			plug.partialName() == "paramWeight" ||
+			plug.partialName() == "twistWeight" ||
+			plug.partialName() == "twistValue" ||
+			plug.partialName() == "useOrient" ||
+			plug.partialName() == "maxVertices") {
+			MObject thisNode = thisMObject();
+			MPlug geometryChangingPlug(thisNode, aGeometryChanging);
+			plugArray.append(geometryChangingPlug);
+		}
+	}
+	// Try not set any data or attribute value in this method
+	// Because EM's parallel evaluation will not call this method at all
+	// A widely used *bad* approach is to write "aGeometryChanged=true" when
+	// some attribute changed. Use Technique 1.1 to avoid this.
+	return MStatus::kSuccess;
 }
 
-void TwistSplineNode::draw(M3dView &view, const MDagPath &path, M3dView::DisplayStyle style, M3dView::DisplayStatus dstat) {
-	// TODO: build the legacy viewport draw mechanism
-}
-
-
-
-
-
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-// Viewport 2.0 override implementation
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-// By setting isAlwaysDirty to false in MPxDrawOverride constructor, the
-// draw override will be updated (via prepareForDraw()) only when the node
-// is marked dirty via DG evaluation or dirty propagation. Additional
-// callback is also added to explicitly mark the node as being dirty (via
-// MRenderer::setGeometryDrawDirty()) for certain circumstances. Note that
-// the draw callback in MPxDrawOverride constructor is set to NULL in order
-// to achieve better performance.
-TwistSplineDrawOverride::TwistSplineDrawOverride(const MObject& obj)
-	: MHWRender::MPxDrawOverride(obj, NULL, false) {
-	fModelEditorChangedCbId = MEventMessage::addEventCallback("modelEditorChanged", OnModelEditorChanged, this);
-
+MStatus TwistSplineNode::postEvaluation(const MDGContext& context,
+										const MEvaluationNode& evaluationNode,
+										PostEvaluationType evalType) {
+	// For cache restoration only.
+	// This method is responsible for fixing the 'geometryChanging' flag in
+	// cache restore frames Because in cache store phase, PopulateGeometry &
+	// Viewport-Caching happens before Evaluation-Cache store The value of
+	// 'geometryChanging' will always be set to 'false' (it is already used by
+	// render) Thus, we have to fix the geometryChanging attribute to the
+	// correct value.
 	MStatus status;
-	MFnDependencyNode node(obj, &status);
-	tsn = status ? dynamic_cast<TwistSplineNode*>(node.userNode()) : NULL;
-}
-
-TwistSplineDrawOverride::~TwistSplineDrawOverride() {
-	tsn = NULL;
-
-	if (fModelEditorChangedCbId != 0) {
-		MMessage::removeCallback(fModelEditorChangedCbId);
-		fModelEditorChangedCbId = 0;
+	// kEvaluateDirectly indicates we are restoring from cache.
+	if (evalType == PostEvaluationEnum::kEvaluatedDirectly &&
+		evaluationNode.dirtyPlugExists(aGeometryChanging, &status) && status) {
+		MDataBlock data = forceCache();
+		MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
+		if (status != MStatus::kSuccess) return status;
+		boolHandle.setBool(true);
+		boolHandle.setClean();
 	}
+	return MPxLocatorNode::postEvaluation(context, evaluationNode, evalType);
 }
 
-void TwistSplineDrawOverride::OnModelEditorChanged(void *clientData) {
-	// Mark the node as being dirty so that it can update on display appearance
-	// switch among wireframe and shaded.
-	TwistSplineDrawOverride *ovr = static_cast<TwistSplineDrawOverride*>(clientData);
-	if (ovr && ovr->tsn) {
-		MHWRender::MRenderer::setGeometryDrawDirty(ovr->tsn->thisMObject());
-	}
+void TwistSplineNode::getCacheSetup(const MEvaluationNode& evalNode,
+									MNodeCacheDisablingInfo& disablingInfo,
+									MNodeCacheSetupInfo& cacheSetupInfo,
+									MObjectArray& monitoredAttributes) const {
+	MPxLocatorNode::getCacheSetup(evalNode, disablingInfo, cacheSetupInfo,
+								  monitoredAttributes);
+	assert(!disablingInfo.getCacheDisabled());
+	cacheSetupInfo.setPreference(MNodeCacheSetupInfo::kWantToCacheByDefault,
+								 true);
 }
 
-MHWRender::DrawAPI TwistSplineDrawOverride::supportedDrawAPIs() const {
-	// this plugin supports both GL and DX
-	return (MHWRender::kOpenGL | MHWRender::kDirectX11 | MHWRender::kOpenGLCoreProfile);
+void* TwistSplineNode::creator() { return new TwistSplineNode(); }
+
+// Must be called after MPxGeometryOverride::updateDG()
+// Typically used by MPxGeometryOverride::requiresGeometryUpdate()
+bool TwistSplineNode::isGeometryChanging() const {
+	MDataBlock block = const_cast<TwistSplineNode*>(this)->forceCache();
+	// Use inputValue() to trigger evaluation here
+	// Because MPxGeometryOverride::requiresGeometryUpdate() can be called
+	// outside of MPxGeometryOverride::initialize()/updateDG() This evaluation
+	// is safe because this attribute cannot be connected And thus cannot reach
+	// other nodes
+	return block.inputValue(TwistSplineNode::aGeometryChanging).asBool();
 }
 
-bool TwistSplineDrawOverride::isBounded(const MDagPath& /*objPath*/, const MDagPath& /*cameraPath*/) const {
-	return true;
+// Workload for MPxGeometryOverride::updateDG()
+// Updating all the attributes needed by the renderer
+// Ensure these attributes can be accessed by outputValue() safely later
+void TwistSplineNode::updateRenderAttributes() {
+	MDataBlock datablock = forceCache();
+	datablock.inputValue(TwistSplineNode::aGeometryChanging);
+	datablock.inputValue(TwistSplineNode::aDebugDisplay);
+	datablock.inputValue(TwistSplineNode::aDebugScale);
+	datablock.inputValue(TwistSplineNode::aOutputSpline);
 }
 
-MBoundingBox TwistSplineDrawOverride::boundingBox(
-		const MDagPath& objPath,
-		const MDagPath& cameraPath) const {
-	return tsn->boundingBox();
+// Should only be called from MPxGeometryOverride::populateGeometry()
+// Returns the parameters required to update geometry
+// Set "TwistSplineNode::geometryChanging" to "false" to avoid duplicate update
+// [[ensure : isGeometryChanging() == false]]
+TwistSplineNode::GeometryParameters TwistSplineNode::updatingGeometry() {
+	MDataBlock block = const_cast<TwistSplineNode*>(this)->forceCache();
+
+	// Reset the geometryChanging attribute to false so that we do not update
+	// the geometry multiple times
+	block.outputValue(TwistSplineNode::aGeometryChanging).set(false);
+
+	GeometryParameters param;
+	param.debugMode =
+		block.outputValue(TwistSplineNode::aDebugDisplay).asBool();
+	param.debugScale =
+		block.outputValue(TwistSplineNode::aDebugScale).asDouble();
+	param.splineData =
+		block.outputValue(TwistSplineNode::aOutputSpline).asPluginData();
+
+	return param;
 }
-
-
-// Called by Maya each time the object needs to be drawn.
-MUserData* TwistSplineDrawOverride::prepareForDraw(
-		const MDagPath& objPath,
-		const MDagPath& cameraPath,
-		const MHWRender::MFrameContext& frameContext,
-		MUserData* oldData) {
-	MStatus status;
-	// Any data needed from the Maya dependency graph must be retrieved and cached in this stage.
-	TwistSplineDrawData* data = dynamic_cast<TwistSplineDrawData*>(oldData);
-	if (!data) data = new TwistSplineDrawData();
-
-	TwistSplineT* ts = tsn->getSplineData();
-	data->splinePoints = ts->getPoints();
-	tsn->getDebugDraw(data->debugDraw, data->debugScale);
-	
-	if (data->debugDraw){
-		double scale = data->debugScale;
-
-		MVectorArray tans = ts->getTangents();
-		data->tangents.setLength(tans.length() * 2);
-		for (size_t i = 0; i < tans.length(); ++i) {
-			MPoint &spi = data->splinePoints[i];
-			data->tangents[2*i] = spi;
-			data->tangents[(2*i) +1] = scale * tans[i] + spi;
-		}
-
-		MVectorArray norms = ts->getNormals();
-		data->normals.setLength(norms.length() * 2);
-		for (size_t i = 0; i < norms.length(); ++i) {
-			MPoint &spi = data->splinePoints[i];
-			MVector &nn = norms[i];
-			data->normals[2 * i] = spi;
-			data->normals[(2 * i) + 1] = scale * nn + spi;
-		}
-
-		MVectorArray binorms = ts->getBinormals();
-		data->binormals.setLength(binorms.length() * 2);
-		for (size_t i = 0; i < binorms.length(); ++i) {
-			MPoint &spi = data->splinePoints[i];
-			data->binormals[2 * i] = spi;
-			data->binormals[(2 * i) + 1] = scale * binorms[i] + spi;
-		}
-	}
-	
-	// get correct color based on the state of object, e.g. active or dormant
-	data->color = MHWRender::MGeometryUtilities::wireframeColor(objPath);
-	return data;
-}
-
-// addUIDrawables() provides access to the MUIDrawManager, which can be used
-// to queue up operations for drawing simple UI elements such as lines, circles and
-// text. To enable addUIDrawables(), override hasUIDrawables() and make it return true.
-void TwistSplineDrawOverride::addUIDrawables(
-		const MDagPath& objPath,
-		MHWRender::MUIDrawManager& drawManager,
-		const MHWRender::MFrameContext& frameContext,
-		const MUserData* userData) {
-	TwistSplineDrawData* data = (TwistSplineDrawData*)userData;
-	if (!data) return;
-
-	bool draw2D = false; // ALWAYS false
-	drawManager.beginDrawable();
-
-	drawManager.setColor(data->color);
-
-	drawManager.setDepthPriority(MHWRender::MRenderItem::sActiveLineDepthPriority);
-	drawManager.lineStrip(data->splinePoints, draw2D);
-
-	if (data->debugDraw){
-		drawManager.setColor(MColor(.5, 0, 0));
-		drawManager.lineList(data->tangents, draw2D);
-
-		drawManager.setColor(MColor(0, 0, .5));
-		drawManager.lineList(data->binormals, draw2D);
-
-		drawManager.setColor(MColor(0, .5, 0));
-		drawManager.lineList(data->normals, draw2D);
-	}
-	drawManager.endDrawable();
-}
-

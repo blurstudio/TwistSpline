@@ -30,6 +30,8 @@ SOFTWARE.
 #include <maya/MGlobal.h>
 #include <maya/MFnCompoundAttribute.h>
 #include <maya/MFnMatrixAttribute.h>
+#include <maya/MFnNurbsCurve.h>
+#include <maya/MFnNurbsCurveData.h>
 #include <maya/MFnUnitAttribute.h>
 #include <maya/MMatrix.h>
 #include <maya/MFnPluginData.h>
@@ -64,6 +66,7 @@ MString	TwistSplineNode::drawRegistrantId("TwistSplineNodePlugin");
 
 MObject TwistSplineNode::aOutputSpline;
 MObject TwistSplineNode::aSplineLength;
+MObject TwistSplineNode::aNurbsData;
 
 MObject TwistSplineNode::aVertexData;
 MObject TwistSplineNode::aInTangent;
@@ -76,6 +79,7 @@ MObject TwistSplineNode::aTwistWeight;
 MObject TwistSplineNode::aUseOrient;
 
 MObject TwistSplineNode::aGeometryChanging;
+MObject TwistSplineNode::aSplineDisplay;
 MObject TwistSplineNode::aDebugDisplay;
 MObject TwistSplineNode::aDebugScale;
 MObject TwistSplineNode::aMaxVertices;
@@ -96,6 +100,10 @@ MStatus TwistSplineNode::initialize() {
 	tAttr.setWritable(false);
 	addAttribute(aOutputSpline);
 
+	aNurbsData = tAttr.create("outputNurbsCurve", "onc", MFnNurbsCurveData::kNurbsCurve, MObject::kNullObj);
+	tAttr.setWritable(false);
+	addAttribute(aNurbsData);
+
 	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
 	nAttr.setWritable(false);
 	addAttribute(aSplineLength);
@@ -108,6 +116,8 @@ MStatus TwistSplineNode::initialize() {
 
 	//--------------- Input -------------------
 
+	aSplineDisplay = nAttr.create("splineDisplay", "sd", MFnNumericData::kBoolean, true);
+	addAttribute(aSplineDisplay);
 	aDebugDisplay = nAttr.create("debugDisplay", "dd", MFnNumericData::kBoolean, false);
 	addAttribute(aDebugDisplay);
 	aDebugScale = nAttr.create("debugScale", "ds", MFnNumericData::kDouble, 1.0);
@@ -115,7 +125,6 @@ MStatus TwistSplineNode::initialize() {
 	aMaxVertices = nAttr.create("maxVertices", "mv", MFnNumericData::kInt, 1000);
     nAttr.setMin(2);
 	addAttribute(aMaxVertices);
-
 
 	//--------------- Array -------------------
 
@@ -167,6 +176,16 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aUseOrient, aOutputSpline);
 	attributeAffects(aMaxVertices, aOutputSpline);
 
+	attributeAffects(aInTangent, aNurbsData);
+	attributeAffects(aControlVertex, aNurbsData);
+	attributeAffects(aOutTangent, aNurbsData);
+	attributeAffects(aParamValue, aNurbsData);
+	attributeAffects(aParamWeight, aNurbsData);
+	attributeAffects(aTwistWeight, aNurbsData);
+	attributeAffects(aTwistValue, aNurbsData);
+	attributeAffects(aUseOrient, aNurbsData);
+	attributeAffects(aMaxVertices, aNurbsData);
+
 	attributeAffects(aInTangent, aSplineLength);
 	attributeAffects(aControlVertex, aSplineLength);
 	attributeAffects(aOutTangent, aSplineLength);
@@ -217,6 +236,18 @@ MBoundingBox TwistSplineNode::boundingBox() const {
 		maxz = pt[2] > maxz ? pt[2] : maxz;
 	}
 	return MBoundingBox(MPoint(minx, miny, minz), MPoint(maxx, maxy, maxz));
+}
+
+void TwistSplineNode::getSplineDraw(bool &oDraw) const {
+	MStatus stat;
+	MObject mobj = thisMObject();
+
+	oDraw = false;
+	if (!mobj.isNull()) {
+		MPlug drawPlug(mobj, aSplineDisplay);
+		if (!drawPlug.isNull())
+			drawPlug.getValue(oDraw);
+	}
 }
 
 void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
@@ -350,6 +381,55 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		storageH.setMPxData(outSplineData);
 		data.setClean(aOutputSpline);
 	}
+	else if (plug == aNurbsData) {
+		MStatus status;
+
+		// Get the splines that need computing.
+		MDataHandle inHandle = data.inputValue(aOutputSpline);
+		MDataHandle outHandle = data.outputValue(aNurbsData);
+
+		MPxData* pd = inHandle.asPluginData();
+		if (pd == nullptr) {
+			outHandle.setMObject(MObject::kNullObj);
+			return MS::kSuccess;
+		}
+
+		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
+		TwistSplineT *spline = inSplineData->getSpline();
+		if (spline == nullptr) {
+			outHandle.setMObject(MObject::kNullObj);
+			return MS::kSuccess;
+		}
+
+		// Construct the nurbs curve data.
+		size_t degree = 3;
+		size_t curKnot = 0;
+		MPointArray cvs = spline->getVerts();
+		size_t numVerts = size(cvs);
+		MDoubleArray knots;
+		int increments = degree;
+		int numKnots = numVerts + degree + 1;
+		// Ignore the first and last knots.
+		for (int i = 1; i < numKnots - 1; ++i) {
+			float knot = curKnot;
+			knots.append(knot);
+			// Increment the knots by 1 every degree
+			if (i == increments) {
+				curKnot += 1;
+				increments += degree;
+			}
+		}
+
+		MFnNurbsCurveData curveData;
+		MObject curveDataObj = curveData.create();
+		MFnNurbsCurve curve;
+		curve.create(cvs, knots, degree, MFnNurbsCurve::kOpen, false, true,
+					 curveDataObj, &status);
+		MCHECKERROR(status);
+
+		outHandle.setMObject(curveDataObj);
+		data.setClean(aNurbsData);
+	}
 	else if (plug == aSplineLength) {
 		// First, get the splines that need computing, and their weight.
 		MDataHandle inHandle = data.inputValue(aOutputSpline);
@@ -361,7 +441,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			return MS::kSuccess;
 		}
 
-		auto inSplineData = (TwistSplineData *)pd;
+		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
 		TwistSplineT *spline = inSplineData->getSpline();
 
 		if (spline == nullptr) {
@@ -415,17 +495,16 @@ MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 	// No need to do this outside of EM graph construction (for the sake of
 	// performance)
 	if (MEvaluationManager::graphConstructionActive()) {
-		if (plug.partialName() == "inTangent" ||
-			plug.partialName() == "outTangent" ||
-			plug.partialName() == "controlVertex" ||
-			plug.partialName() == "paramValue" ||
-			plug.partialName() == "paramWeight" ||
-			plug.partialName() == "twistWeight" ||
-			plug.partialName() == "twistValue" ||
-			plug.partialName() == "useOrient" ||
-			plug.partialName() == "maxVertices") {
+		if (plug == aInTangent || plug == aOutTangent ||
+			plug == aControlVertex || plug == aMaxVertices ||
+			plug == aParamValue || plug == aParamWeight ||
+			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient) {
 			MObject thisNode = thisMObject();
+			MPlug outputSplinePlug(thisNode, aOutputSpline);
+			MPlug nurbsDataPlug(thisNode, aNurbsData);
 			MPlug geometryChangingPlug(thisNode, aGeometryChanging);
+			plugArray.append(outputSplinePlug);
+			plugArray.append(nurbsDataPlug);
 			plugArray.append(geometryChangingPlug);
 		}
 	}
@@ -484,6 +563,12 @@ bool TwistSplineNode::isGeometryChanging() const {
 	return block.inputValue(TwistSplineNode::aGeometryChanging).asBool();
 }
 
+void TwistSplineNode::postConstructor() {
+	MFnDependencyNode nodeFn(thisMObject());
+	nodeFn.setName("twistSplineShape#");
+	nodeFn.setIcon("twistSpline.png");
+}
+
 // Workload for MPxGeometryOverride::updateDG()
 // Updating all the attributes needed by the renderer
 // Ensure these attributes can be accessed by outputValue() safely later
@@ -499,20 +584,10 @@ void TwistSplineNode::updateRenderAttributes() {
 // Returns the parameters required to update geometry
 // Set "TwistSplineNode::geometryChanging" to "false" to avoid duplicate update
 // [[ensure : isGeometryChanging() == false]]
-TwistSplineNode::GeometryParameters TwistSplineNode::updatingGeometry() {
+void TwistSplineNode::updatingGeometry() {
 	MDataBlock block = const_cast<TwistSplineNode*>(this)->forceCache();
 
 	// Reset the geometryChanging attribute to false so that we do not update
 	// the geometry multiple times
 	block.outputValue(TwistSplineNode::aGeometryChanging).set(false);
-
-	GeometryParameters param;
-	param.debugMode =
-		block.outputValue(TwistSplineNode::aDebugDisplay).asBool();
-	param.debugScale =
-		block.outputValue(TwistSplineNode::aDebugScale).asDouble();
-	param.splineData =
-		block.outputValue(TwistSplineNode::aOutputSpline).asPluginData();
-
-	return param;
 }

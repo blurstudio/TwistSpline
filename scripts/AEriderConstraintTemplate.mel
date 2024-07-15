@@ -1,0 +1,27 @@
+// Attribute Editor Template for Blur Studio's 'Rider Constraint' plugin.
+
+global proc AEriderConstraintTemplate( string $nodeName ) {
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Global Attributes" -collapse 0;
+        editorTemplate -label "Global Offset" -addControl "globalOffset";
+        editorTemplate -label "Global Spread" -addControl "globalSpread";
+        editorTemplate -label "Rotate Order" -addControl "rotateOrder";
+        editorTemplate -label "Use Cycle" -addControl "useCycle";
+        editorTemplate -label "Normalize" -addControl "normalize";
+        editorTemplate -label "Norm Value" -addControl "normValue";
+        editorTemplate -label "Use Global Min" -addControl "useGlobalMin";
+        editorTemplate -label "Min Global Param" -addControl "minGlobalParam";
+        editorTemplate -label "Use Global Max" -addControl "useGlobalMax";
+        editorTemplate -label "Max Global Param" -addControl "maxGlobalParam";
+    editorTemplate -endLayout;
+
+	editorTemplate -label "Input Splines" -addControl "inputSplines";
+	editorTemplate -label "Params" -addControl "params";
+
+    // Base class attributes
+    AEdependNodeTemplate $nodeName;
+
+    editorTemplate -addExtraControls;
+    editorTemplate -endScrollLayout;
+}

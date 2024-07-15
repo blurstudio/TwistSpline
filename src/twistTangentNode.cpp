@@ -443,9 +443,6 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MDataHandle smoothH = data.inputValue(aSmooth);
 		double smooth = smoothH.asDouble();
 
-		MDataHandle weightH = data.inputValue(aWeight);
-		double weight = weightH.asDouble();
-
 		MDataHandle autoH = data.inputValue(aAuto);
 		double autoTan = autoH.asDouble();
 

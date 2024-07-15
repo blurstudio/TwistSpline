@@ -35,10 +35,10 @@ SOFTWARE.
 
 /**
   * A helper function for quickly finding a single index and segment percentage for an input tValue
-  * 
+  *
   * t: The input t-value
   * samp: A std::vector of floats of t-values
-  * 
+  *
   * segT: The t-value for the found segment. Can be outside the (0, 1) range if the input
   *       t-value is outside the range of the samp vector.
   * segIdx: The index of the segment
@@ -72,7 +72,7 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
 	else {
 		auto lbIt = ubIt - 1;
 		segT = (t - *lbIt) / (*ubIt - *lbIt);
-		segIdx = lbIt - samp.begin(); 
+		segIdx = lbIt - samp.begin();
 		if (segIdx < samp.size() - 2 && segT > 0.99999999999) {
 			// Snap values close to the end to the next segment
 			// This removes a lot of jitter
@@ -88,7 +88,7 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
   *
   * params: The input t-values
   * samp: A std::vector of floats of t-values
-  * 
+  *
   * segT: The t-value for each found segment. Can be outside the (0, 1) range if the input
   *       t-value is outside the range of the samp vector.
   * segIdx: The index for each segment
@@ -161,7 +161,7 @@ private:
 public:
 	/**
 	  * Constructor from scratch
-	  * 
+	  *
 	  * p0, p1, p2, p3: Four pointers to Point objects that are the vertices of the segment
 	  * q0, q1, q2, q3: Four quaternion pointers that define the orientations of along the segment
 	  * s0, s1, s2, s3: Four Point pointers that define the xyz scale values along the segment
@@ -588,7 +588,7 @@ public:
 		resize(tbinormals, size(rbinormals));
 		resize(twistVals, size(rnormals));
 		Float len = getLength();
-		
+
 		for (size_t i=0; i <= lutSteps; ++i){
 			Float perc = sampleLengths[i] / len; // parameterize by length
             Float angle = ((endAngle - startAngle) * perc) + startAngle;
@@ -642,9 +642,9 @@ private:
 	std::vector<Float> orientLocks; // The [0-1] lock property for cv quaternion twist
 	std::vector<Float> remap; // The remapped segment endpoint u-values
 
-	size_t projSteps; // The number of steps for a closest point lookup
-	size_t lutSteps; // The number of sub-segments per spline segment
-	Float totalLength;
+	size_t projSteps{}; // The number of steps for a closest point lookup
+	size_t lutSteps{}; // The number of sub-segments per spline segment
+	Float totalLength{};
 
 public:
 	TwistSpline() { lutSteps = 20; }
@@ -662,10 +662,10 @@ public:
 	std::vector<Float> getUserTwists() const { return userTwists; }
 	std::vector<Float> getRemap() const { return remap; }
 	Float getTotalLength() const { return totalLength; }
-	
 
 
-	/// Copy constructor 
+
+	/// Copy constructor
 	TwistSpline(TwistSpline const &old){
 		this->verts = old.verts;
 		this->quats = old.quats;
@@ -695,7 +695,7 @@ public:
 			qq = {&(quats[3*i]), &(quats[3*i + 1]), &(quats[3*i + 2]), &(quats[3*i + 3])};
 			segments[i] = std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>(
 				new TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>(*(old.segments[i]), vv, ss, qq)
-			); 
+			);
 		}
 	}
 
@@ -901,7 +901,6 @@ public:
 		res[0] = -lv[0] * rv[0] + (1.0 - lv[0]) * (cv[1] - cv[0]);
 
 		// Mid Cases
-		Float rvn = rv[rv.size() - 1];
 		for (size_t i = 1; i < len - 1; ++i) {
 			Float A = (cv[i] - cv[i - 1]) / (cv[i + 1] - cv[i - 1]);
 			mat[i][0] = (1.0 - lv[i]) * (1.0 - A);
@@ -917,7 +916,7 @@ public:
 		mat[e][2] = 0.0;
 		res[e] = -lv[e] * rv[e] - (1.0 - lv[e]) * (cv[e] - cv[e - 1]);
 
-		// Then pass it to the solver	
+		// Then pass it to the solver
 		solveTridiagonalMatrix(mat, res);
 	}
 
@@ -961,7 +960,7 @@ public:
 		mat[e][2] = 0.0;
 		res[e] = -lv[e] * rv[e];
 
-		// Then pass it to the solver	
+		// Then pass it to the solver
 		solveTridiagonalMatrix(mat, res);
 	}
 
@@ -1034,7 +1033,7 @@ public:
 			else {
 				segments[segIdx]->rawMatrixAtParam(segT, tan, norm, binorm, tran, scl, twist);
 			}
-	
+
 		}
 	}
 
@@ -1047,7 +1046,7 @@ public:
 			//restVals[i+1] = segments[i]->postAngle() + restVals[i];
 			orientVals[i + 1] = segments[i]->postAngle();
 		}
-	
+
 		// Get the angle difference between the last
 		// frame of a spline and the final CV of the spline
 		// Those are the orientVals

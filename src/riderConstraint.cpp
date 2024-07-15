@@ -42,6 +42,8 @@ SOFTWARE.
 #include <maya/MPoint.h>
 #include <maya/MTypes.h>
 
+#include <algorithm>
+#include <functional>
 #include <vector>
 #include "twistSpline.h"
 #include "twistSplineData.h"
@@ -135,7 +137,7 @@ MStatus riderConstraint::initialize() {
 	nAttr.setKeyable(true);
 	status = addAttribute(aGlobalOffset);
 	CHECKSTAT("aGlobalOffset");
-	
+
 	aGlobalSpread = nAttr.create("globalSpread", "gs", MFnNumericData::kDouble, 1.0, &status);
 	CHECKSTAT("aGlobalSpread");
 	nAttr.setKeyable(true);
@@ -366,11 +368,11 @@ MStatus riderConstraint::initialize() {
 }
 
 MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
-	if (plug == aOutputs || 
+	if (plug == aOutputs ||
 		plug == aScale || plug == aScaleX || plug == aScaleY || plug == aScaleZ ||
 		plug == aRotate || plug == aRotateX || plug == aRotateY || plug == aRotateZ ||
 		plug == aTranslate || plug == aTranslateX || plug == aTranslateY || plug == aTranslateZ
-		) { 
+		) {
 		// I can optimize things a lot more if we do everything at once
 		// So, whatever plug is asked for, just compute it all
 		MStatus status;
@@ -410,7 +412,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			MDataHandle endParamH = inSpGroup.child(aEndParam);
 			double endParam = endParamH.asDouble();
 
-			auto inSplineData = (TwistSplineData *)pd;
+			auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
 			TwistSplineT *spline = inSplineData->getSpline();
 			if (spline == nullptr) {
 				inSpAH.next();
@@ -432,9 +434,10 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		}
 
 		// normalize the weights
-		double s = 0.0;
-		for (double &w : weights) s += w;
-		for (double &w : weights) w /= s;
+		// double s = 0.0;
+		std::accumulate(weights.begin(), weights.end(), 0.0);
+		std::transform(weights.cbegin(), weights.cend(), weights.cbegin(),
+					   weights.begin(), std::divides<>{});
 
 		// Get the params
 		MArrayDataHandle inPAH = data.inputArrayValue(aParams, &status);
@@ -616,8 +619,8 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 					MQuaternion cur = quats[sIdx][pIdx];
 					double pw = weights[sIdx - 1]; // preWeight
 					double cw = weights[sIdx]; // currentWeight
-					double s = pw + cw;
-					prev = slerp(prev, cur, cw / s);
+					double t = pw + cw;
+					prev = slerp(prev, cur, cw / t);
 				}
 				MQuaternion xt(otwists[pIdx], MVector(1.0, 0.0, 0.0));
 				prev = xt * prev;
@@ -644,7 +647,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			MDataHandle tranH = outH.child(aTranslate);
 			MDataHandle rotH = outH.child(aRotate);
 			MDataHandle sclH = outH.child(aScale);
-			
+
 			MMatrix invPar = invParMats[pIdx];
 			MPoint tran = otrans[pIdx] * invPar;
 			MMatrix qmat = oquats[pIdx].asMatrix() * invPar;
@@ -653,7 +656,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			// Ugh, the only way to convert to quat to euler *with a given rot order*
 			// is expanding to matrix and decomposing
 			MEulerRotation meu = MEulerRotation::decompose(qmat, (MEulerRotation::RotationOrder)order);
-						
+
 			tranH.set3Double(tran[0], tran[1], tran[2]);
 			rotH.set3Double(meu.x, meu.y, meu.z);
 			sclH.set3Double(scale[0], scale[1], scale[2]);

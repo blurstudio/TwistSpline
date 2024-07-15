@@ -39,6 +39,8 @@ jobs:
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2023/Autodesk_Maya_2023_3_Update_DEVKIT_Windows.zip"
           - maya: "2024"
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Windows.zip"
+          - maya: "2025"
+            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2025/Autodesk_Maya_2025_1_Update_DEVKIT_Windows.zip"
 
     steps:
       - name: Checkout code
@@ -98,7 +100,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '13.4'
+          xcode-version: '14.3.1'
 
       - name: Configure CMake
         run: |
@@ -130,6 +132,8 @@ jobs:
        include:
           - maya: "2024"
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Mac.dmg"
+          - maya: "2025"
+            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2025/Autodesk_Maya_2025_1_Update_DEVKIT_Mac.dmg"
 
     steps:
       - name: Checkout code
@@ -144,7 +148,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '13.4'
+          xcode-version: '14.3.1'
 
       - name: Configure CMake
         run: |
@@ -179,6 +183,8 @@ jobs:
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2023/Autodesk_Maya_2023_3_Update_DEVKIT_Linux.tgz"
           - maya: "2024"
             devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Linux.tgz"
+          - maya: "2025"
+            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2025/Autodesk_Maya_2025_1_Update_DEVKIT_Linux.tgz"
 
     steps:
       - name: Checkout code
@@ -245,10 +251,12 @@ jobs:
         # ~/modules
         #   /TwistSpline
         #    /<os_name>-<maya_major_version>
+        #     /icons
         #     /plug-ins
         #       TwistSpline.mll
         #     /scripts
         #       *.py
+        #       *.mel
         #   /TwistSpline.mod
 
         with:

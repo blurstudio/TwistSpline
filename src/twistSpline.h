@@ -642,9 +642,9 @@ private:
 	std::vector<Float> orientLocks; // The [0-1] lock property for cv quaternion twist
 	std::vector<Float> remap; // The remapped segment endpoint u-values
 
-	size_t projSteps{}; // The number of steps for a closest point lookup
-	size_t lutSteps{}; // The number of sub-segments per spline segment
-	Float totalLength{};
+	size_t projSteps; // The number of steps for a closest point lookup
+	size_t lutSteps; // The number of sub-segments per spline segment
+	Float totalLength;
 
 public:
 	TwistSpline() { lutSteps = 20; }
@@ -901,6 +901,7 @@ public:
 		res[0] = -lv[0] * rv[0] + (1.0 - lv[0]) * (cv[1] - cv[0]);
 
 		// Mid Cases
+		Float rvn = rv[rv.size() - 1];
 		for (size_t i = 1; i < len - 1; ++i) {
 			Float A = (cv[i] - cv[i - 1]) / (cv[i + 1] - cv[i - 1]);
 			mat[i][0] = (1.0 - lv[i]) * (1.0 - A);

@@ -42,8 +42,6 @@ SOFTWARE.
 #include <maya/MPoint.h>
 #include <maya/MTypes.h>
 
-#include <algorithm>
-#include <functional>
 #include <vector>
 #include "twistSpline.h"
 #include "twistSplineData.h"
@@ -412,7 +410,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			MDataHandle endParamH = inSpGroup.child(aEndParam);
 			double endParam = endParamH.asDouble();
 
-			auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
+			auto inSplineData = (TwistSplineData *)pd;
 			TwistSplineT *spline = inSplineData->getSpline();
 			if (spline == nullptr) {
 				inSpAH.next();
@@ -434,10 +432,9 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		}
 
 		// normalize the weights
-		// double s = 0.0;
-		std::accumulate(weights.begin(), weights.end(), 0.0);
-		std::transform(weights.cbegin(), weights.cend(), weights.cbegin(),
-					   weights.begin(), std::divides<>{});
+		double s = 0.0;
+		for (double &w : weights) s += w;
+		for (double &w : weights) w /= s;
 
 		// Get the params
 		MArrayDataHandle inPAH = data.inputArrayValue(aParams, &status);
@@ -619,8 +616,8 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 					MQuaternion cur = quats[sIdx][pIdx];
 					double pw = weights[sIdx - 1]; // preWeight
 					double cw = weights[sIdx]; // currentWeight
-					double t = pw + cw;
-					prev = slerp(prev, cur, cw / t);
+					double s = pw + cw;
+					prev = slerp(prev, cur, cw / s);
 				}
 				MQuaternion xt(otwists[pIdx], MVector(1.0, 0.0, 0.0));
 				prev = xt * prev;

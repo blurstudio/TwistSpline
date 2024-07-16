@@ -270,6 +270,9 @@ jobs:
           cp ./TwistSpline.mod modules/
           mkdir -p modules/TwistSpline/scripts
           cp -r ./scripts modules/TwistSpline
+          mkdir -p modules/TwistSpline/icons
+          cp ./icons/*.png modules/TwistSpline/icons
+          cp ./icons/*.xpm modules/TwistSpline/icons
           zip -r TwistSpline-${{env.RELEASE_VERSION}}.zip modules/
 
       - name: Upload distribution

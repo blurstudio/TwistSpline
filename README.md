@@ -9,11 +9,11 @@ Internal testing hasn't found any more major bugs, so this is now a *BETA* relea
 This gif demonstrates the smoothly interpolating pin values for this test setup.
 Any control can be pinned with an arbitrary value at any time.
 Not shown: You can unpin *both ends* as long as at least one control has weight.
-![Stretching Demo](https://tbttfox.github.io/Images/TwistSpline_StretchDemo.gif)
+![Stretching Demo](images/TwistSpline_StretchDemo.gif)
 
 This gif deomonstrates the smoothly interpolating twist values (and their interaction with position pinning)
 Again, any control can pin its twist value, and twist solves smoothly through length preservation
-![Twisting Demo](https://tbttfox.github.io/Images/TwistSpline_TwistDemo.gif)
+![Twisting Demo](images/TwistSpline_TwistDemo.gif)
 
 Not Shown: The Rider node can constrain between multiple splines. This means that a tool could easily be written to build and switch to another spline. For an artist, this would give the ability to add or remove spline controls on the fly in-scene.
 
@@ -159,52 +159,52 @@ Note: Despite its name, this isn't actually implemented as a constraint, but it 
 | --- | --- | --- |
 |rotateOrder (ro) | enum | XYZ |
 |&nbsp;&nbsp;&nbsp;&nbsp;`Enum of the rotation order standard to Maya`|
-|globalOffset (go) | double | 0.0 | 
+|globalOffset (go) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;`A value added to all input parameters. This shifts everything connected to this constraint along the spline.`|
-|globalSpread (gs) | double | 1.0 | 
+|globalSpread (gs) | double | 1.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;`A value multiplied by all input parameters. This spreads everything out (happens before the offset)`|
-|useCycle (uc) |  | false | 
+|useCycle (uc) |  | false |
 |&nbsp;&nbsp;&nbsp;&nbsp;`Whether or not to cycle the parameters once they go past the end. If not, they extrapolate linearly.`|
-|normalize (n) | boolen | True | 
+|normalize (n) | boolen | True |
 |&nbsp;&nbsp;&nbsp;&nbsp;`If true, then the input parameters are remapped so that (0, normValue) maps to (0, restLength) of the spline`|
-|normValue (nv) | double | 1.0 | 
+|normValue (nv) | double | 1.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;`The remapped maximum value when normalizing`|
 |inputSplines (is) | compound | n/a |
 |&nbsp;&nbsp;&nbsp;&nbsp;`The group that is a spline and its corresponding weight.`|
-|&nbsp;&nbsp;&nbsp;&nbsp;spline (s) | 
+|&nbsp;&nbsp;&nbsp;&nbsp;spline (s) |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`An input spline`|
-|&nbsp;&nbsp;&nbsp;&nbsp;weight (w) | double | 1.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;weight (w) | double | 1.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The constraint weight of that spline`|
-|params (ps) | 
+|params (ps) |
 |&nbsp;&nbsp;&nbsp;&nbsp;`The parameters for the constraints, and their parent inverse matrices`|
-|&nbsp;&nbsp;&nbsp;&nbsp;param (p) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;param (p) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The parameter where an object will stick to the spline.`|
 |&nbsp;&nbsp;&nbsp;&nbsp;parentInverseMatrix (pim) | matrix | identity |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The parentInverseMatrix of the object sticking to the spline`|
 | | |
-|outputs (out) | 
+|outputs (out) |
 |&nbsp;&nbsp;&nbsp;&nbsp;translate (t) | double3 | n/a |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output translation`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;translateX (tx) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;translateX (tx) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output translation X Component`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;translateY (ty) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;translateY (ty) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output translation Y Component`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;translateZ (tz) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;translateZ (tz) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output translation Z Component`|
 |&nbsp;&nbsp;&nbsp;&nbsp;rotate (rot) | double3 | n/a |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output rotation`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rotateX (rotx) | angle | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rotateX (rotx) | angle | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output rotation X Component`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rotateY (roty) | angle | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rotateY (roty) | angle | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output rotation Y Component`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rotateZ (rotz) | angle | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rotateZ (rotz) | angle | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output rotation Z Component`|
 |&nbsp;&nbsp;&nbsp;&nbsp;scale (scl) | double3 | n/a |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output scale`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scaleX (sclx) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scaleX (sclx) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output scale X Component`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scaleY (scly) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scaleY (scly) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output scale Y Component`|
-|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scaleZ (sclz) | double | 0.0 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scaleZ (sclz) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`The output scale Z Component`|
 

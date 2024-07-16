@@ -672,3 +672,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 	return MS::kSuccess;
 }
 
+void riderConstraint::postConstructor() {
+	MFnDependencyNode nodeFn(thisMObject());
+	nodeFn.setIcon("riderConstraint.png");
+}

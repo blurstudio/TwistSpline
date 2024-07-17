@@ -403,21 +403,15 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// Construct the nurbs curve data.
 		size_t degree = 3;
-		size_t curKnot = 0;
 		MPointArray cvs = spline->getVerts();
-		size_t numVerts = size(cvs);
-		MDoubleArray knots;
-		int increments = degree;
-		int numKnots = numVerts + degree + 1;
-		// Ignore the first and last knots.
-		for (int i = 1; i < numKnots - 1; ++i) {
-			float knot = curKnot;
-			knots.append(knot);
-			// Increment the knots by 1 every degree
-			if (i == increments) {
-				curKnot += 1;
-				increments += degree;
-			}
+		std::vector<double> remaps = spline->getRemap();
+		MDoubleArray knots(remaps.size() * 3, 0);
+		unsigned int c = 0;
+		for (double p: remaps){
+			// set the value 3 times
+			knots[c++] = p;
+			knots[c++] = p;
+			knots[c++] = p;
 		}
 
 		MFnNurbsCurveData curveData;

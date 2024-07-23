@@ -265,9 +265,6 @@ jobs:
           echo "LatestTag: ${LATEST_TAG}"
           echo "RELEASE_VERSION=${LATEST_TAG}" >> $GITHUB_ENV
 
-      - name: Display structure of working directory 1
-        run: ls -R
-
       - name: Create distribution
         run: |
           cp ./TwistSpline.mod modules/
@@ -277,9 +274,6 @@ jobs:
           # cp ./icons/*.png modules/TwistSpline/icons
           # cp ./icons/*.xpm modules/TwistSpline/icons
           zip -r TwistSpline-${{env.RELEASE_VERSION}}.zip modules/
-
-      - name: Display structure of working directory 1
-        run: ls -R
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

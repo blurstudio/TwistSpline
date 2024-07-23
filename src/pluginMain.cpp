@@ -31,7 +31,7 @@ SOFTWARE.
 
 MStatus initializePlugin( MObject obj ) {
 	MStatus   status;
-	MFnPlugin plugin( obj, "BlurStudio", "2023", "Any");
+	MFnPlugin plugin( obj, "BlurStudio", "1.1.0", "Any");
 
 	status = plugin.registerData("twistSplineData", TwistSplineData::id, TwistSplineData::creator);
 	if (!status) {

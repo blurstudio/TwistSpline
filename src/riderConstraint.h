@@ -24,6 +24,7 @@ SOFTWARE.
 
 #pragma once
 #include <maya/MPxNode.h>
+#include <maya/MFnDependencyNode.h>
 
 class riderConstraint : public MPxNode {
 public:
@@ -33,6 +34,7 @@ public:
 	}
 	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
 	static  MStatus initialize();
+	void postConstructor() override;
 
 public:
 	// inputs

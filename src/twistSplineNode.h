@@ -55,8 +55,8 @@ public:
 	TwistSplineNode();
 	virtual	~TwistSplineNode();
 
-	virtual	MStatus	compute( const MPlug& plug, MDataBlock& data );
-    MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray) override;
+	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
+	MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray) override;
 	MStatus postEvaluation(const MDGContext& context,
 						   const MEvaluationNode& evaluationNode,
 						   PostEvaluationType evalType) override;
@@ -64,34 +64,27 @@ public:
 					   MNodeCacheDisablingInfo& disablingInfo,
 					   MNodeCacheSetupInfo& cacheSetupInfo,
 					   MObjectArray& monitoredAttributes) const override;
+	void postConstructor() override;
 	static void* creator();
 	static	MStatus	initialize();
-	virtual bool	isBounded() const {
-		return true;
-	}
+	virtual bool isBounded() const { return true; }
 	virtual MBoundingBox boundingBox() const;
 	TwistSplineT* getSplineData() const;
 	void getDebugDraw(bool &oDraw, double &oScale) const;
-
-	// Data defines the custom shape, which decides the generated geometry's vertex buffer.
-	// This only contains geometry data, material and appearance data should not
-	// be contained here E.g. Outer Radius R and inner radius R for a torus shape.
-	struct GeometryParameters {
-		bool debugMode;
-		double debugScale;
-		double splineLength;
-		MPxData* splineData;
-	};
+	void getSplineDraw(bool &oDraw) const;
 
 	// Methods for the renderer to call
 	bool isGeometryChanging() const;
 	void updateRenderAttributes();
-	GeometryParameters updatingGeometry();
+	void updatingGeometry();
 
 public:
 	static MObject aOutputSpline;
 	static MObject aSplineLength;
 	static MObject aMaxVertices;
+
+	// NURBS curve output data
+	static MObject aNurbsData;
 
 	// array
 	static MObject aVertexData;
@@ -106,6 +99,7 @@ public:
 		static MObject aUseOrient;
 
 	static MObject aGeometryChanging;
+	static MObject aSplineDisplay;
 	static MObject aDebugDisplay;
 	static MObject aDebugScale;
 

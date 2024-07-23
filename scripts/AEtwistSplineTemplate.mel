@@ -1,0 +1,26 @@
+// Attribute Editor Template for Blur Studio's 'Twist Spline' plugin.
+
+global proc AEtwistSplineTemplate( string $nodeName ) {
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Spline Attributes" -collapse 0;
+        editorTemplate -label "Max Vertices" -addControl "maxVertices";
+        editorTemplate -label "Vertex Data" -addControl "vertexData";
+    editorTemplate -endLayout;
+
+    editorTemplate -beginLayout "Debug Attributes" -collapse 0;
+        editorTemplate -label "Spline Display" -addControl "splineDisplay";
+        editorTemplate -label "Debug Display" -addControl "debugDisplay";
+        editorTemplate -label "Debug Scale" -addControl "debugScale";
+        editorTemplate -label "Spline Length" -addControl "splineLength";
+    editorTemplate -endLayout;
+
+    editorTemplate -suppress "localPosition";
+    editorTemplate -suppress "localScale";
+
+    // Base class attributes
+    AElocatorInclude $nodeName;
+
+    editorTemplate -addExtraControls;
+    editorTemplate -endScrollLayout;
+}

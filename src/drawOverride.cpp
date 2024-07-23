@@ -57,10 +57,10 @@ bool TwistSplineGeometryOverride::requiresUpdateRenderItems(
 
 /*
 	Return true when the aOutputSpline changes, which requires us to re-generate
-   the geometry.
+	the geometry.
 
-   Note: this method must return the exact same value in a cache-restoration
-   frame as it was in the corresponding cache-store frame.
+	Note: this method must return the exact same value in a cache-restoration
+	frame as it was in the corresponding cache-store frame.
 */
 bool TwistSplineGeometryOverride::requiresGeometryUpdate() const {
 	/*
@@ -92,8 +92,10 @@ void TwistSplineGeometryOverride::addUIDrawables(
 	auto splineData = mTwistSplineNode->getSplineData();
 	auto splinePoints = splineData->getPoints();
 
+	bool splineDraw;
 	bool debugDraw;
 	double debugScale;
+	mTwistSplineNode->getSplineDraw(splineDraw);
 	mTwistSplineNode->getDebugDraw(debugDraw, debugScale);
 
 	MFnDependencyNode node(path.node());
@@ -101,13 +103,13 @@ void TwistSplineGeometryOverride::addUIDrawables(
 
 	drawManager.beginDrawable(MUIDrawManager::kSelectable);
 
-	// Get correct color based on the state of object, e.g. active or
-	// dormant.
-	MHWRender::DisplayStatus displayStatus =
-		MHWRender::MGeometryUtilities::displayStatus(path);
-	MColor color = MHWRender::MGeometryUtilities::wireframeColor(path);
-	drawManager.setColor(color);
-	drawManager.lineStrip(splinePoints, draw2D);
+	if (splineDraw) {
+		MHWRender::DisplayStatus displayStatus =
+			MHWRender::MGeometryUtilities::displayStatus(path);
+		MColor color = MHWRender::MGeometryUtilities::wireframeColor(path);
+		drawManager.setColor(color);
+		drawManager.lineStrip(splinePoints, draw2D);
+	}
 
 	if (debugDraw) {
 		MPointArray tangents;

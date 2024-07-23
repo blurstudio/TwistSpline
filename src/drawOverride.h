@@ -32,11 +32,10 @@ class TwistSplineGeometryOverride : public MPxGeometryOverride {
 
 	// Support configuration functions :
 	MHWRender::DrawAPI supportedDrawAPIs() const override {
-		return (MHWRender::DrawAPI::kOpenGL | MHWRender::DrawAPI::kDirectX11 |
-				MHWRender::DrawAPI::kOpenGLCoreProfile);
+		return MHWRender::DrawAPI::kAllDevices;
 	}
 	bool supportsEvaluationManagerParallelUpdate() const override {
-		return true;
+		return false;
 	}
 	/*
 		Supporting Viewport Caching (VP2 Custom Caching)
@@ -61,10 +60,10 @@ class TwistSplineGeometryOverride : public MPxGeometryOverride {
 		cache (if geometry is animated).
 		- populateGeometry() should be context-safe
 	*/
-	bool supportsVP2CustomCaching() const override { return true; }
+	bool supportsVP2CustomCaching() const override { return false; }
 
 	/*
-		Interaction with TwistSplineNodeNode
+		Interaction with TwistSplineNode
 		- This is the only method where you can call MPlug::getValue() or
 		Mdatablock::inputValue()
 		- This method can be empty (in EM modes), if you have setup the node

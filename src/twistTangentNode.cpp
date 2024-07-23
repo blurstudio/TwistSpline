@@ -203,7 +203,7 @@ MStatus TwistTangentNode::initialize() {
 	nAttr.setMax(3.0);
 	nAttr.setKeyable(true);
 	addAttribute(aWeight);
-	
+
 	aBackpoint = nAttr.create("backpoint", "bp", MFnNumericData::kBoolean, false);
 	addAttribute(aBackpoint);
 
@@ -320,7 +320,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		double preLegLen = preLeg.length();
 		double nextLegLen = nextLeg.length();
 
-		// We're pointing our tangent from pre->post 
+		// We're pointing our tangent from pre->post
 		// This is an auto-tan point, so get the half-angle between
 		// the perpendiculars of the legs
 		MVector smo, tan, nrm, bin;
@@ -329,7 +329,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		double dot = preNorm * postNorm;
 		if (abs(dot) >= 0.999999999 || preLegLen == 0.0) { // Linear case
 			tan = nextLeg.normal();
-			
+
 			// If we're in a straight line, default to using the local
 			// y-axis as the up-direction
 			//nrm = MVector(0.0, 1.0, 0.0);
@@ -353,7 +353,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		else {
 			// We are defining the twist of an endpoint, so in this
 			// case, the Prev leg is pointing to the *third* CV just
-			// to get the up-vector, and the tangent will just be 
+			// to get the up-vector, and the tangent will just be
 			// the postNorm
 			tan = postNorm;
 			bin = (preNorm ^ postNorm).normal();
@@ -406,7 +406,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 
 	}
 	else if (plug == aOutLinearTarget || plug == aOutLinearTargetX || plug == aOutLinearTargetY || plug == aOutLinearTargetZ) {
-		// Calculate 
+		// Calculate
 		MDataHandle inH = data.inputValue(aSmoothTan);
 		MVector smo = inH.asVector();
 		MDataHandle smoothH = data.inputValue(aSmooth);

@@ -2,7 +2,6 @@
 A smoothly reparameterizing Bezier spline that also interpolates orientations.
 
 The idea here is to build a header-only C++ template library for the spline, and a reference implementation (maya plugin).
-Internal testing hasn't found any more major bugs, so this is now a *BETA* release, and is ready to be tested in production.
 
 ## Demos
 
@@ -17,10 +16,17 @@ Again, any control can pin its twist value, and twist solves smoothly through le
 
 Not Shown: The Rider node can constrain between multiple splines. This means that a tool could easily be written to build and switch to another spline. For an artist, this would give the ability to add or remove spline controls on the fly in-scene.
 
-## Compiling
+## Installation
+Download the `TwistSpline-v*.*.*.zip` file from the [latest release](https://github.com/blurstudio/TwistSpline/releases)
+Create a `modules` folder in your maya user directory. For example, on Windows, that would mean creating `C:\Users\<your-username>\Documents\maya\modules`. Then copy the `TwistSpline.mod` file and the `TwistSpline` folder into that directory.
+This should work for Maya 2022 and later on Windows, Linux, and Mac.
 
-Hopefully compiling should be easy using Cmake. There are no dependencies other than Maya and the STL. I only have access to Maya on Windows, so I can't really test on Linux or OSX, but I'm fairly certain everything is cross-platform. If anybody wants to set those up, please feel free, and send a PR.
-If you are compiling for Windows, there's a `mayaConfigure.bat` file that should give an easy way to build a Visual Studio solution, or compile. You may have to edit it a bit to suit your needs, but it should be pretty straightforward.
+## Compiling
+Hopefully you shouldn't have to compile. The [releases](https://github.com/blurstudio/TwistSpline/releases) are kept up-to-date, and include plugins for Maya 2022-2025 on Windows, Linux, and Mac.
+
+If you fork this repo, you can edit the [workflow yaml file](https://raw.githubusercontent.com/blurstudio/TwistSpline/master/.github/workflows/main.yml) to make any changes or add any options you need (PR's welcome)
+
+If you have to compile locally for windows, there's a `mayaConfigure.bat` file that has defaults to build a Visual Studio solution and compile. You may have to edit it a bit to suit your needs, but it should be pretty straightforward. Linux and Mac users can probably use that as a template.
 
 ## Usage
 
@@ -57,8 +63,12 @@ DebugDisplay and DebugScale show the orientation frames calculated along the spl
 | --- | --- | --- |
 |outputSpline (os) | TwistSpline | n/a |
 |&nbsp;&nbsp;&nbsp;&nbsp;`The custom spline data output` | | |
+|outputNurbsCurve (onc) | NurbsCurve | n/a |
+|&nbsp;&nbsp;&nbsp;&nbsp;`A Maya-native NURBS curve output. Note: It will reparameterize by length, but it will not include twist data` | | |
 |splineLength (sl) | double | 0.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;`The total length of the spline` | | |
+|splineDisplay (sd) | bool | True |
+|&nbsp;&nbsp;&nbsp;&nbsp;`Whether to draw the spline` | | |
 |debugDisplay (dd) | bool | False |
 |&nbsp;&nbsp;&nbsp;&nbsp;`Whether to show the debug axes` | | |
 |debugScale (ds) | double | 1.0 |
@@ -141,9 +151,6 @@ These nodes usually come in pairs. One for each twist spline segment. The in/out
 |&nbsp;&nbsp;&nbsp;&nbsp;`Whether an automatic output is smooth or linear`|
 |weight (w)| double | 1.0 |
 |&nbsp;&nbsp;&nbsp;&nbsp;`The Length of the auto tangent. A weight of 1 is 1/3 of the distance between the current and next CVs`|
-
-
-
 
 ## RiderConstraint Node
 

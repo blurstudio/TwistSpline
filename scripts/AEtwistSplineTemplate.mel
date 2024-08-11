@@ -4,6 +4,7 @@ global proc AEtwistSplineTemplate( string $nodeName ) {
     editorTemplate -beginScrollLayout;
 
     editorTemplate -beginLayout "Spline Attributes" -collapse 0;
+        editorTemplate -label "Scale Compensation" -addControl "scaleCompensation";
         editorTemplate -label "Max Vertices" -addControl "maxVertices";
         editorTemplate -label "Vertex Data" -addControl "vertexData";
     editorTemplate -endLayout;

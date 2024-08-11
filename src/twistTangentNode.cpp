@@ -100,10 +100,13 @@ MStatus TwistTangentNode::initialize() {
 	// The final output point relative to the parentInverseMatrix
 	// This is the data that will eventually get plugged into the spline
 	aOutX = uAttr.create("outX", "ox", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aOutX")
 	aOutY = uAttr.create("outY", "oy", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aOutY")
 	aOutZ = uAttr.create("outZ", "oz", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aOutZ")
 	aOut = nAttr.create("out", "out", aOutX, aOutY, aOutZ, &status);
 	CHECKSTAT("aOut")
@@ -111,10 +114,13 @@ MStatus TwistTangentNode::initialize() {
 
 	// The position of the smooth tangent relative to the parentInverseMatrix
 	aSmoothTanX = uAttr.create("smoothTanX", "stx", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aSmoothTanX")
 	aSmoothTanY = uAttr.create("smoothTanY", "sty", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aSmoothTanY")
 	aSmoothTanZ = uAttr.create("smoothTanZ", "stz", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aSmoothTanZ")
 	aSmoothTan = nAttr.create("smoothTan", "st", aSmoothTanX, aSmoothTanY, aSmoothTanZ, &status);
 	CHECKSTAT("aSmoothTan")
@@ -123,10 +129,13 @@ MStatus TwistTangentNode::initialize() {
 	// The target that the adjacent tangent will point at when it's in auto-linear mode
 	// relative to the parentInverseMatrix
 	aOutLinearTargetX = uAttr.create("outLinearTargetX", "ltx", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aLinearTargetX")
 	aOutLinearTargetY = uAttr.create("outLinearTargetY", "lty", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aLinearTargetY")
 	aOutLinearTargetZ = uAttr.create("outLinearTargetZ", "ltz", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aLinearTargetZ")
 	aOutLinearTarget = nAttr.create("outLinearTarget", "lt", aOutLinearTargetX, aOutLinearTargetY, aOutLinearTargetZ, &status);
 	CHECKSTAT("aLinearTarget")
@@ -134,10 +143,13 @@ MStatus TwistTangentNode::initialize() {
 
 	// The up-vector based off the prev and next vertices, relative to the parentInverseMatrix
 	aOutTwistUpX = uAttr.create("outTwistUpX", "otx", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aTwistUpX")
 	aOutTwistUpY = uAttr.create("outTwistUpY", "oty", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aTwistUpY")
 	aOutTwistUpZ = uAttr.create("outTwistUpZ", "otz", MFnUnitAttribute::kDistance, 0.0, &status);
+	uAttr.setWritable(false);
 	CHECKSTAT("aTwistUpZ")
 	aOutTwistUp = nAttr.create("outTwistUp", "ot", aOutTwistUpX, aOutTwistUpY, aOutTwistUpZ, &status);
 	CHECKSTAT("aTwistUp")
@@ -146,6 +158,7 @@ MStatus TwistTangentNode::initialize() {
 	// The up-vector matrix based off the prev and next vertices relative to the parentInverseMatrix
 	aOutTwistMat = mAttr.create("outTwistMat", "otm");
 	mAttr.setDefault(MMatrix::identity);
+	mAttr.setWritable(false);
 	addAttribute(aOutTwistMat);
 
 	//----------------- Matrices -----------------
@@ -470,3 +483,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 	return MS::kSuccess;
 }
 
+void TwistTangentNode::postConstructor() {
+	MFnDependencyNode nodeFn(thisMObject());
+	nodeFn.setIcon("twistTangent.png");
+}

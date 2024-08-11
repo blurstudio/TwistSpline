@@ -1,0 +1,28 @@
+// Attribute Editor Template for Blur Studio's 'Twist Tangent' plugin.
+
+global proc AEtwistTangentTemplate( string $nodeName ) {
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Input Attributes" -collapse 0;
+        editorTemplate -label "In Linear Target" -addControl "inLinearTarget";
+        editorTemplate -label "Auto" -addControl "auto";
+        editorTemplate -label "Smooth" -addControl "smooth";
+        editorTemplate -label "Weight" -addControl "weight";
+        editorTemplate -label "Backpoint" -addControl "backpoint";
+        editorTemplate -label "Endpoint" -addControl "endpoint";
+    editorTemplate -endLayout;
+
+    editorTemplate -beginLayout "Output Attributes" -collapse 0;
+        editorTemplate -label "Out" -addControl "out";
+        editorTemplate -label "Smooth Tan" -addControl "smoothTan";
+        editorTemplate -label "Out Linear Target" -addControl "outLinearTarget";
+        editorTemplate -label "Out Twist Up" -addControl "outTwistUp";
+        editorTemplate -label "Out Twist Mat" -addControl "outTwistMat";
+    editorTemplate -endLayout;
+
+    // Base class attributes
+    AEdependNodeTemplate $nodeName;
+
+    editorTemplate -addExtraControls;
+    editorTemplate -endScrollLayout;
+}

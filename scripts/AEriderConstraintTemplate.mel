@@ -6,6 +6,7 @@ global proc AEriderConstraintTemplate( string $nodeName ) {
     editorTemplate -beginLayout "Global Attributes" -collapse 0;
         editorTemplate -label "Global Offset" -addControl "globalOffset";
         editorTemplate -label "Global Spread" -addControl "globalSpread";
+        editorTemplate -label "Scale Compensation" -addControl "scaleCompensation";
         editorTemplate -label "Rotate Order" -addControl "rotateOrder";
         editorTemplate -label "Use Cycle" -addControl "useCycle";
         editorTemplate -label "Normalize" -addControl "normalize";

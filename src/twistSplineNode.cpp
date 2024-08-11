@@ -180,6 +180,7 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aUseOrient, aOutputSpline);
 	attributeAffects(aMaxVertices, aOutputSpline);
 
+	attributeAffects(aScaleCompensation, aNurbsData);
 	attributeAffects(aInTangent, aNurbsData);
 	attributeAffects(aControlVertex, aNurbsData);
 	attributeAffects(aOutTangent, aNurbsData);
@@ -196,6 +197,7 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aMaxVertices, aSplineLength);
 
 	// Geometry changing
+	attributeAffects(aScaleCompensation, aGeometryChanging);
 	attributeAffects(aInTangent, aGeometryChanging);
 	attributeAffects(aControlVertex, aGeometryChanging);
 	attributeAffects(aOutTangent, aGeometryChanging);
@@ -266,9 +268,15 @@ void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
 			drawPlug.getValue(oDraw);
 		}
 
+		MPlug scaleCompPlug(mobj, aScaleCompensation);
+		double scaleComp = 1.0;
+		if (!scaleCompPlug.isNull())
+			scaleCompPlug.getValue(scaleComp);
+
 		MPlug scalePlug(mobj, aDebugScale);
 		if (!scalePlug.isNull()) {
 			scalePlug.getValue(oScale);
+			oScale *= scaleComp;
 		}
 	}
 
@@ -502,7 +510,8 @@ MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 		if (plug == aInTangent || plug == aOutTangent ||
 			plug == aControlVertex || plug == aMaxVertices ||
 			plug == aParamValue || plug == aParamWeight ||
-			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient) {
+			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient ||
+			plug == aScaleCompensation) {
 			MObject thisNode = thisMObject();
 			MPlug outputSplinePlug(thisNode, aOutputSpline);
 			MPlug nurbsDataPlug(thisNode, aNurbsData);

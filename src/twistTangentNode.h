@@ -24,19 +24,21 @@ SOFTWARE.
 
 #pragma once
 
+#include <maya/MFnDependencyNode.h>
 #include <maya/MStatus.h>
 #include <maya/MObject.h>
 #include <maya/MPxNode.h>
-#include <maya/MTypeId.h> 
- 
+#include <maya/MTypeId.h>
+
 class TwistTangentNode : public MPxNode {
 public:
 	TwistTangentNode();
-	virtual	~TwistTangentNode(); 
+	virtual	~TwistTangentNode();
 
 	virtual	MStatus	compute( const MPlug& plug, MDataBlock& data );
 	static	void*	creator();
 	static	MStatus	initialize();
+	void postConstructor() override;
 
 public:
 	// outputs

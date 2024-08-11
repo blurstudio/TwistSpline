@@ -144,9 +144,9 @@ MStatus riderConstraint::initialize() {
 	CHECKSTAT("aGlobalSpread");
 
 	aScaleCompensation = nAttr.create("scaleCompensation", "sclcmp", MFnNumericData::kDouble, 1.0, &status);
-	CHECKSTAT("aGlobalScale");
+	CHECKSTAT("aScaleCompensation");
 	status = addAttribute(aScaleCompensation);
-	CHECKSTAT("aGlobalScale");
+	CHECKSTAT("aScaleCompensation");
 
 	aUseCycle = nAttr.create("useCycle", "uc", MFnNumericData::kBoolean, false, &status);
 	CHECKSTAT("aUseCycle");

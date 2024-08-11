@@ -99,6 +99,7 @@ public:
 		static MObject aUseOrient;
 
 	static MObject aGeometryChanging;
+	static MObject aScaleCompensation;
 	static MObject aSplineDisplay;
 	static MObject aDebugDisplay;
 	static MObject aDebugScale;

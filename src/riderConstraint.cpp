@@ -61,6 +61,7 @@ MTypeId		riderConstraint::id(0x001226FC);
 MObject		riderConstraint::aRotateOrder;
 MObject		riderConstraint::aGlobalOffset;
 MObject		riderConstraint::aGlobalSpread;
+MObject		riderConstraint::aScaleCompensation;
 MObject		riderConstraint::aUseCycle;
 MObject		riderConstraint::aNormalize;
 MObject		riderConstraint::aNormValue;
@@ -141,6 +142,11 @@ MStatus riderConstraint::initialize() {
 	nAttr.setKeyable(true);
 	status = addAttribute(aGlobalSpread);
 	CHECKSTAT("aGlobalSpread");
+
+	aScaleCompensation = nAttr.create("scaleCompensation", "sclcmp", MFnNumericData::kDouble, 1.0, &status);
+	CHECKSTAT("aGlobalScale");
+	status = addAttribute(aScaleCompensation);
+	CHECKSTAT("aGlobalScale");
 
 	aUseCycle = nAttr.create("useCycle", "uc", MFnNumericData::kBoolean, false, &status);
 	CHECKSTAT("aUseCycle");
@@ -348,7 +354,7 @@ MStatus riderConstraint::initialize() {
 		&aInputSplines, &aSpline, &aSplineLength, &aEndParam, &aWeight, &aParams, &aParam,
 		&aParentInverseMatrix, &aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize,
 		&aNormValue, &aUseMin, &aMinParam, &aUseMax, &aMaxParam,
-		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam
+		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam, &aScaleCompensation
 	};
 
 	std::vector<MObject *> oobjs = {
@@ -491,6 +497,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		// Deal with cycling and the global offset
 		MDataHandle gOffsetH = data.inputValue(aGlobalOffset);
 		MDataHandle gSpreadH = data.inputValue(aGlobalSpread);
+		MDataHandle gScaleH = data.inputValue(aScaleCompensation);
 		MDataHandle useCycleH = data.inputValue(aUseCycle);
 
 		MDataHandle useGlobalMinH = data.inputValue(aUseGlobalMin);
@@ -501,10 +508,13 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		MDataHandle normalizeH = data.inputValue(aNormalize);
 		MDataHandle normValueH = data.inputValue(aNormValue);
 
+		// Both the normalized value and the globalSpread have to be scaled up
+		// when the global rig scales.
 		double doNorm = normalizeH.asDouble();
-		double normVal = normValueH.asDouble();
+		double scaleComp = gScaleH.asDouble();
+		double normVal = normValueH.asDouble() * scaleComp;
 		double gOffset = gOffsetH.asDouble();
-		double gSpread = gSpreadH.asDouble();
+		double gSpread = gSpreadH.asDouble() * scaleComp;
 		bool useCycle = useCycleH.asBool();
 
 		bool useGlobalMin = useGlobalMinH.asBool();
@@ -532,8 +542,8 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				const auto &lp = spline->getLockPositions();
 				mp = lp[lp.size() - 1];
 
-                const auto &rmp = spline->getRemap();
-                mrmp = rmp[rmp.size() - 1];
+				const auto &rmp = spline->getRemap();
+				mrmp = rmp[rmp.size() - 1];
 			}
 
 			std::vector<MPoint> ttrans, tscales;

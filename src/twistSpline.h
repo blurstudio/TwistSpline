@@ -943,7 +943,7 @@ public:
 		mat[0][0] = 0.0;
 		mat[0][1] = -1.0;
 		mat[0][2] = 1.0 - lv[0];
-		res[0] = -lv[0] * rv[0];
+		res[0] = lv[0] * rv[0];
 
 		// Mid Cases
 		for (size_t i = 1; i < len - 1; ++i) {
@@ -951,7 +951,7 @@ public:
 			mat[i][0] = (1.0 - lv[i]) * (1.0 - A);
 			mat[i][1] = -1.0;
 			mat[i][2] = (1.0 - lv[i]) * A;
-			res[i] = -lv[i] * rv[i];
+			res[i] = lv[i] * rv[i];
 		}
 
 		// End case
@@ -959,7 +959,7 @@ public:
 		mat[e][0] = 1.0 - lv[e];
 		mat[e][1] = -1.0;
 		mat[e][2] = 0.0;
-		res[e] = -lv[e] * rv[e];
+		res[e] = lv[e] * rv[e];
 
 		// Then pass it to the solver
 		solveTridiagonalMatrix(mat, res);
@@ -1045,7 +1045,7 @@ public:
 		for (size_t i=0; i<segments.size(); ++i){
 			segLens[i+1] = segments[i]->getLength() + segLens[i];
 			//restVals[i+1] = segments[i]->postAngle() + restVals[i];
-			orientVals[i + 1] = segments[i]->postAngle();
+			orientVals[i + 1] = -segments[i]->postAngle();
 		}
 
 		// Get the angle difference between the last

@@ -25,6 +25,7 @@ set(SOURCE_FILES
     "src/riderConstraint.h"
     "src/decomposeRotation.h"
     "src/twistTangentNode.h"
+    "src/twistMultiTangentNode.h"
 
     "src/pluginMain.cpp"
     "src/drawOverride.cpp"
@@ -32,6 +33,7 @@ set(SOURCE_FILES
     "src/twistSplineNode.cpp"
     "src/riderConstraint.cpp"
     "src/twistTangentNode.cpp"
+    "src/twistMultiTangentNode.cpp"
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})

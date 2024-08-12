@@ -82,6 +82,7 @@ public:
 	static MObject aOutputSpline;
 	static MObject aSplineLength;
 	static MObject aMaxVertices;
+	static MObject aTwistMultiplier;
 
 	// NURBS curve output data
 	static MObject aNurbsData;

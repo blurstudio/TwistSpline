@@ -1,0 +1,16 @@
+// Attribute Editor Template for Blur Studio's 'Twist Spline' plugin.
+
+global proc AEtwistMultiTangentTemplate( string $nodeName ) {
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Spline Tangent Attributes" -collapse 0;
+        editorTemplate -label "Start Tension" -addControl "startTension";
+        editorTemplate -label "End Tension" -addControl "endTension";
+        editorTemplate -label "Max Vertices" -addControl "maxVertices";
+        editorTemplate -label "Closed" -addControl "closed";
+        editorTemplate -label "Vert Data" -addControl "vertData";
+    editorTemplate -endLayout;
+
+    editorTemplate -addExtraControls;
+    editorTemplate -endScrollLayout;
+}

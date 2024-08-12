@@ -26,6 +26,7 @@ SOFTWARE.
 #include "twistSplineData.h"
 #include "riderConstraint.h"
 #include "twistTangentNode.h"
+#include "twistMultiTangentNode.h"
 #include "drawOverride.h"
 #include <maya/MFnPlugin.h>
 
@@ -64,8 +65,6 @@ MStatus initializePlugin( MObject obj ) {
 		return status;
 	}
 
-
-
 	status = plugin.registerNode(
 		"twistTangent",
 		TwistTangentNode::id,
@@ -74,6 +73,17 @@ MStatus initializePlugin( MObject obj ) {
 	);
 	if (!status) {
 		status.perror("Failed to register TwistTangent Node");
+		return status;
+	}
+
+	status = plugin.registerNode(
+		"twistMultiTangent",
+		TwistMultiTangentNode::id,
+		TwistMultiTangentNode::creator,
+		TwistMultiTangentNode::initialize
+	);
+	if (!status) {
+		status.perror("Failed to register TwistMultiTangent Node");
 		return status;
 	}
 
@@ -90,7 +100,7 @@ MStatus initializePlugin( MObject obj ) {
 }
 
 MStatus uninitializePlugin(MObject obj) {
-	MStatus   nodeStat, dataStat, drawStat, riderStat, tangentStat;
+	MStatus   nodeStat, dataStat, drawStat, riderStat, tangentStat, mtangentStat;
 	MFnPlugin plugin(obj);
 
 	dataStat = plugin.deregisterData(TwistSplineData::id);
@@ -105,6 +115,9 @@ MStatus uninitializePlugin(MObject obj) {
 	tangentStat = plugin.deregisterNode(TwistTangentNode::id);
 	if (!tangentStat) nodeStat.perror("Failed to de-register twistTangent Node");
 
+	mtangentStat = plugin.deregisterNode(TwistMultiTangentNode::id);
+	if (!mtangentStat) nodeStat.perror("Failed to de-register twistMultiTangent Node");
+
 	drawStat = MDrawRegistry::deregisterGeometryOverrideCreator(
 		TwistSplineNode::drawDbClassification,
 		TwistSplineNode::drawRegistrantId);
@@ -114,5 +127,6 @@ MStatus uninitializePlugin(MObject obj) {
 	if (!dataStat) return dataStat;
 	if (!riderStat) return riderStat;
 	if (!tangentStat) return tangentStat;
+	if (!mtangentStat) return mtangentStat;
 	return drawStat;
 }

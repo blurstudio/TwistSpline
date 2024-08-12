@@ -84,6 +84,7 @@ MObject TwistSplineNode::aSplineDisplay;
 MObject TwistSplineNode::aDebugDisplay;
 MObject TwistSplineNode::aDebugScale;
 MObject TwistSplineNode::aMaxVertices;
+MObject TwistSplineNode::aTwistMultiplier;
 
 TwistSplineNode::TwistSplineNode() {}
 TwistSplineNode::~TwistSplineNode() {}
@@ -126,8 +127,10 @@ MStatus TwistSplineNode::initialize() {
 	aDebugScale = nAttr.create("debugScale", "ds", MFnNumericData::kDouble, 1.0);
 	addAttribute(aDebugScale);
 	aMaxVertices = nAttr.create("maxVertices", "mv", MFnNumericData::kInt, 1000);
-    nAttr.setMin(2);
+	nAttr.setMin(2);
 	addAttribute(aMaxVertices);
+	aTwistMultiplier = nAttr.create("twistMultiplier", "tm", MFnNumericData::kDouble, -1.0);
+	addAttribute(aTwistMultiplier);
 
 	//--------------- Array -------------------
 
@@ -169,44 +172,37 @@ MStatus TwistSplineNode::initialize() {
 
 	addAttribute(aVertexData);
 
-	attributeAffects(aScaleCompensation, aOutputSpline);
-	attributeAffects(aInTangent, aOutputSpline);
-	attributeAffects(aControlVertex, aOutputSpline);
-	attributeAffects(aOutTangent, aOutputSpline);
-	attributeAffects(aParamValue, aOutputSpline);
-	attributeAffects(aParamWeight, aOutputSpline);
-	attributeAffects(aTwistWeight, aOutputSpline);
-	attributeAffects(aTwistValue, aOutputSpline);
-	attributeAffects(aUseOrient, aOutputSpline);
-	attributeAffects(aMaxVertices, aOutputSpline);
+    std::vector<MObject *> ins, outs, lenup;
+	ins.push_back(&aScaleCompensation);
+	ins.push_back(&aInTangent);
+	ins.push_back(&aControlVertex);
+	ins.push_back(&aOutTangent);
+	ins.push_back(&aParamValue);
+	ins.push_back(&aParamWeight);
+	ins.push_back(&aTwistWeight);
+	ins.push_back(&aTwistValue);
+	ins.push_back(&aUseOrient);
+	ins.push_back(&aMaxVertices);
+	ins.push_back(&aTwistMultiplier);
 
-	attributeAffects(aScaleCompensation, aNurbsData);
-	attributeAffects(aInTangent, aNurbsData);
-	attributeAffects(aControlVertex, aNurbsData);
-	attributeAffects(aOutTangent, aNurbsData);
-	attributeAffects(aParamValue, aNurbsData);
-	attributeAffects(aParamWeight, aNurbsData);
-	attributeAffects(aTwistWeight, aNurbsData);
-	attributeAffects(aTwistValue, aNurbsData);
-	attributeAffects(aUseOrient, aNurbsData);
-	attributeAffects(aMaxVertices, aNurbsData);
+	outs.push_back(&aOutputSpline);
+	outs.push_back(&aNurbsData);
+	outs.push_back(&aGeometryChanging);
 
-	attributeAffects(aInTangent, aSplineLength);
-	attributeAffects(aControlVertex, aSplineLength);
-	attributeAffects(aOutTangent, aSplineLength);
-	attributeAffects(aMaxVertices, aSplineLength);
+	lenup.push_back(&aInTangent);
+	lenup.push_back(&aControlVertex);
+	lenup.push_back(&aOutTangent);
+	lenup.push_back(&aMaxVertices);
 
-	// Geometry changing
-	attributeAffects(aScaleCompensation, aGeometryChanging);
-	attributeAffects(aInTangent, aGeometryChanging);
-	attributeAffects(aControlVertex, aGeometryChanging);
-	attributeAffects(aOutTangent, aGeometryChanging);
-	attributeAffects(aParamValue, aGeometryChanging);
-	attributeAffects(aParamWeight, aGeometryChanging);
-	attributeAffects(aTwistWeight, aGeometryChanging);
-	attributeAffects(aTwistValue, aGeometryChanging);
-	attributeAffects(aUseOrient, aGeometryChanging);
-	attributeAffects(aMaxVertices, aGeometryChanging);
+	for (auto inptr: ins){
+		for (auto outptr: outs){
+			attributeAffects(*inptr, *outptr);
+		}
+	}
+
+	for (auto lenptr: lenup){
+		attributeAffects(*lenptr, aSplineLength);
+	}
 
 	return MS::kSuccess;
 }
@@ -302,6 +298,9 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		MDataHandle scaleCompH = data.inputValue(aScaleCompensation);
 		double scaleComp = scaleCompH.asDouble();
 
+		MDataHandle hTwistMultiplier = data.inputValue(aTwistMultiplier);
+		double twistMultiplier = hTwistMultiplier.asDouble();
+
 		// loop over the input matrices
 		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
 		unsigned ecount = inputs.elementCount();
@@ -327,7 +326,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			if (lockIt > 0.0) gotLocks = true;
 
 			twistLock.push_back(group.child(aTwistWeight).asDouble());
-			userTwist.push_back(group.child(aTwistValue).asDouble());
+			userTwist.push_back(group.child(aTwistValue).asDouble() * twistMultiplier);
 
 			double oriIt = group.child(aUseOrient).asDouble();
 			orientLock.push_back(oriIt);

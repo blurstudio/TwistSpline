@@ -513,7 +513,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		double doNorm = normalizeH.asDouble();
 		double scaleComp = gScaleH.asDouble();
 		double normVal = normValueH.asDouble() * scaleComp;
-		double gOffset = gOffsetH.asDouble();
+		double gOffset = gOffsetH.asDouble() * scaleComp;
 		double gSpread = gSpreadH.asDouble() * scaleComp;
 		bool useCycle = useCycleH.asBool();
 

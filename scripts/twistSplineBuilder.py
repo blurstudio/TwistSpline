@@ -29,7 +29,7 @@ DFM_ORG_FMT = "Org_X_X_{0}Jnts"  # Deformer Organizer
 DFM_BFR_FMT = "Hbfr_X_{0}Rider_Part{1:02d}"  # Rider Buffer
 DFM_FMT = "Dfm_X_{0}Rider_Part{1:02d}"  # Deformer
 SPLINE_FMT = "Rig_X_{0}Spline_Drv"  # Spline name
-MASTER_FMT = "Ctrl_X_{}SplineGlobal_Part"  # Global control
+MASTER_FMT = "Ctrl_X_{0}SplineGlobal_Part"  # Global control
 CTRL_ORG_FMT = "Org_X_{0}_Ctrls"  # Control organizer
 BFR_CV_FMT = "Hbfr_X_{0}Spline_Part{1:02d}"  # CV Buffer
 CTRL_CV_FMT = "Ctrl_X_{0}Spline_Part{1:02d}"  # CV
@@ -39,6 +39,8 @@ CTRL_INTAN_FMT = "Ctrl_X_{0}InTangent_Part{1:02d}"  # In-Tangent
 CTRL_OUTTAN_FMT = "Ctrl_X_{0}OutTangent_Part{1:02d}"  # Out-Tangent
 BFR_AINTAN_FMT = "Hbfr_X_{0}AutoInTangent_Part{1:02d}"  # Auto In-Tangent Buffer
 BFR_AOUTTAN_FMT = "Hbfr_X_{0}AutoOutTangent_Part{1:02d}"  # Auto Out-Tangent Buffer
+BFR_AINREST_FMT = "Hbfr_X_{0}RestInTangent_Part{1:02d}"  # Auto In-Tangent Rest Buffer
+BFR_AOUTREST_FMT = "Hbfr_X_{0}RestOutTangent_Part{1:02d}"  # Auto Out-Tangent Rest Buffer
 
 
 def makeLinkLine(sourceNode, destNode, selectNode=None):
@@ -56,41 +58,41 @@ def makeLinkLine(sourceNode, destNode, selectNode=None):
     if selectNode is None:
         selectNode = sourceNode
 
-    lineTfm = cmds.curve(d=1, p=([0, 0, 0], [0, 0, 1]), k=(0, 1))
-    lineShape = cmds.listRelatives(lineTfm, s=True, path=True)[0]
-    cmds.parent(lineShape, selectNode, r=True, s=True, nc=True)
+    lineTfm = cmds.curve(degree=1, point=([0, 0, 0], [0, 0, 1]), knot=(0, 1))
+    lineShp = cmds.listRelatives(lineTfm, shapes=True, path=True)[0]
+    cmds.parent(lineShp, selectNode, relative=True, shape=True, noConnections=True)
     cmds.delete(lineTfm)
 
     for idx, node in enumerate([destNode, sourceNode]):
         if node == selectNode:
             # If so, we can skip all the connections and just set the control point
             # to the local rotPivot, and leave it there
-            rotPivot = cmds.xform(sourceNode, q=True, objectSpace=True, rotatePivot=True)
-            cmds.setAttr(f"{lineShape}.controlPoints[{idx}]", *rotPivot)
+            rotPivot = cmds.xform(sourceNode, query=True, objectSpace=True, rotatePivot=True)
+            cmds.setAttr(f"{lineShp}.controlPoints[{idx}]", *rotPivot)
         else:
-            worldMatrix = cmds.createNode("pointMatrixMult", name=f"{node}_linkCurveWorldMat")
-            inverseMatrix = cmds.createNode(
-                "pointMatrixMult", name=f"{selectNode}_linkCurveWorldMat"
-            )
-            rotPivot = cmds.xform(node, q=True, objectSpace=True, rotatePivot=True)
+            wmat = cmds.createNode("pointMatrixMult", name=f"{node}_linkCurveWorldMat")
+            iwmat = cmds.createNode("pointMatrixMult", name=f"{selectNode}_linkCurveWorldMat")
+            rotPivot = cmds.xform(node, query=True, objectSpace=True, rotatePivot=True)
 
-            cmds.connectAttr(f"{node}.worldMatrix", f"{worldMatrix}.inMatrix", f=True)
-            cmds.setAttr(f"{worldMatrix}.inPoint", *rotPivot)
+            cmds.connectAttr(f"{node}.worldMatrix", f"{wmat}.inMatrix", force=True)
+            cmds.setAttr(f"{wmat}.inPoint", *rotPivot)
+            cmds.connectAttr(f"{selectNode}.worldInverseMatrix", f"{iwmat}.inMatrix", force=True)
+
+            cmds.connectAttr(f"{wmat}.output", f"{iwmat}.inPoint", force=True)
             cmds.connectAttr(
-                f"{selectNode}.worldInverseMatrix", f"{inverseMatrix}.inMatrix", f=True
+                f"{iwmat}.output",
+                f"{lineShp}.controlPoints[{idx}]",
+                force=True,
             )
 
-            cmds.connectAttr(f"{worldMatrix}.output", f"{inverseMatrix}.inPoint", f=True)
-            cmds.connectAttr(f"{inverseMatrix}.output", f"{lineShape}.controlPoints[{idx}]", f=True)
+            for node in [wmat, iwmat]:
+                cmds.setAttr(f"{node}.isHistoricallyInteresting", False)
 
-    cmds.setAttr(f"{lineShape}.overrideEnabled", 1)
-    cmds.setAttr(f"{lineShape}.overrideColor", 3)
-    cmds.rename(lineShape, f"{sourceNode}Shape")
+    cmds.setAttr(f"{lineShp}.overrideEnabled", 1)
+    cmds.setAttr(f"{lineShp}.overrideColor", 3)
+    cmds.rename(lineShp, f"{sourceNode}Shape")
 
-    for node in [worldMatrix, inverseMatrix]:
-        cmds.setAttr(f"{node}.isHistoricallyInteresting", False)
-
-    return lineShape
+    return lineShp
 
 
 def _mkMasterHarbieControllers(scale=1.0):
@@ -110,10 +112,26 @@ def _mkMasterHarbieControllers(scale=1.0):
 
     cvCtrl = toPath(cloc("Cube", "TMP_SplineCV", None, None, size=1.0 * scale, color=[1, 0.6, 0]))
     oTanCtrl = toPath(
-        cloc("Cross", "TMP_OTan", None, None, size=0.4 * scale, ro=[0, 0, 0], color=[1, 0.6, 0.6])
+        cloc(
+            "Cross",
+            "TMP_OTan",
+            None,
+            None,
+            size=0.4 * scale,
+            ro=[0, 0, 0],
+            color=[1, 0.6, 0.6],
+        )
     )
     iTanCtrl = toPath(
-        cloc("Square", "TMP_ITan", None, None, size=0.4 * scale, ro=[90, 0, 0], color=[0, 1, 1])
+        cloc(
+            "Square",
+            "TMP_ITan",
+            None,
+            None,
+            size=0.4 * scale,
+            ro=[90, 0, 0],
+            color=[0, 1, 1],
+        )
     )
     twistCtrl = toPath(
         cloc(
@@ -153,7 +171,7 @@ def _mkMasterControllers(scale=1.0):
     v = 0.5 * scale
     cvCtrl = cmds.curve(
         degree=1,
-        p=[
+        point=[
             # top loop
             (v, v, v),
             (v, -v, v),
@@ -181,11 +199,13 @@ def _mkMasterControllers(scale=1.0):
     outTanCtrl = cmds.circle(radius=v, constructionHistory=False)[0]
 
     v = 0.25 * scale
-    inTanCtrl = cmds.curve(degree=1, p=[(v, v, 0), (v, -v, 0), (-v, -v, 0), (-v, v, 0), (v, v, 0)])
+    inTanCtrl = cmds.curve(
+        degree=1, point=[(v, v, 0), (v, -v, 0), (-v, -v, 0), (-v, v, 0), (v, v, 0)]
+    )
 
     v = 0.5 * scale
     s = 0.5 * scale
-    twistCtrl = cmds.curve(degree=1, p=[(-v, s, 0), (v, s, 0), (0, 2 * v + s, 0), (-v, s, 0)])
+    twistCtrl = cmds.curve(degree=1, point=[(-v, s, 0), (v, s, 0), (0, 2 * v + s, 0), (-v, s, 0)])
 
     v = 0.15 * scale
     s = 1.108 * scale
@@ -193,7 +213,7 @@ def _mkMasterControllers(scale=1.0):
     masterCtrl = cmds.curve(
         degree=3,
         periodic=True,
-        p=[
+        point=[
             (v, -v + o, 0),
             (0, -s + o, 0),
             (-v, -v + o, 0),
@@ -206,12 +226,201 @@ def _mkMasterControllers(scale=1.0):
             (0, -s + o, 0),
             (-v, -v + o, 0),
         ],
-        k=[-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        knot=[-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     )
     return cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl
 
 
-def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
+def _addTangentAttrs(tan):
+    cmds.addAttr(
+        tan,
+        longName="Auto",
+        attributeType="double",
+        defaultValue=1.0,
+        minValue=0.0,
+        maxValue=1.0,
+    )
+    cmds.setAttr(f"{tan}.Auto", edit=True, keyable=True)
+    cmds.addAttr(
+        tan,
+        longName="Smooth",
+        attributeType="double",
+        defaultValue=1.0,
+        minValue=0.0,
+        maxValue=1.0,
+    )
+    cmds.setAttr(f"{tan}.Smooth", edit=True, keyable=True)
+    cmds.addAttr(
+        tan,
+        longName="Weight",
+        attributeType="double",
+        defaultValue=1.0,
+        minValue=0.0001,
+        maxValue=5.0,
+    )
+    cmds.setAttr(f"{tan}.Weight", edit=True, keyable=True)
+
+
+def _addCVAttrs(cv):
+    cmds.addAttr(
+        cv,
+        longName="Pin",
+        attributeType="double",
+        defaultValue=0.0,
+        minValue=0.0,
+        maxValue=1.0,
+    )
+    cmds.setAttr(f"{cv}.Pin", edit=True, keyable=True)
+    cmds.addAttr(
+        cv,
+        longName="PinParam",
+        attributeType="double",
+        defaultValue=0.0,
+        minValue=0.0,
+    )
+    cmds.setAttr(f"{cv}.PinParam", edit=True, keyable=True)
+
+
+def _addTwistAttrs(tw):
+    for h in [".tx", ".ty", ".tz", ".ry", ".rz", ".sx", ".sy", ".sz", ".v"]:
+        cmds.setAttr(tw + h, lock=True, keyable=False, channelBox=False)
+    cmds.addAttr(
+        tw,
+        longName="UseTwist",
+        attributeType="double",
+        defaultValue=0.0,
+        minValue=0.0,
+        maxValue=1.0,
+    )
+    cmds.setAttr(f"{tw}.UseTwist", edit=True, keyable=True)
+
+
+def _makeMaster(masterCtrl, pfx):
+    master = cmds.duplicate(masterCtrl, name=MASTER_FMT.format(pfx))[0]
+    cmds.addAttr(master, longName="Offset", attributeType="double", defaultValue=0.0)
+    cmds.setAttr(f"{master}.Offset", edit=True, keyable=True)
+    cmds.addAttr(
+        master,
+        longName="Stretch",
+        attributeType="double",
+        defaultValue=1.0,
+        minValue=0.0001,
+    )
+    cmds.setAttr(f"{master}.Stretch", edit=True, keyable=True)
+    return master
+
+
+def _makeCVs(numCVs, spread, master, pfx, cvCtrl, twistCtrl):
+    cvs, tws, cvBfrs, twBfrs = [], [], [], []
+    controlsGrp = cmds.createNode("transform", name=CTRL_ORG_FMT.format(pfx))
+    cmds.parentConstraint(master, controlsGrp, maintainOffset=True)
+    cmds.scaleConstraint(master, controlsGrp, maintainOffset=True)
+
+    for i in range(numCVs):
+        cvBfr = cmds.createNode("transform", name=BFR_CV_FMT.format(pfx, i + 1), parent=controlsGrp)
+        cv = cmds.duplicate(cvCtrl, name=CTRL_CV_FMT.format(pfx, i + 1))[0]
+        twName = BFR_TWIST_FMT.format(pfx, i + 1)
+        twBfr = cmds.createNode("transform", name=twName, parent=controlsGrp)
+        tw = cmds.duplicate(twistCtrl, name=CTRL_TWIST_FMT.format(pfx, i + 1))[0]
+        _addCVAttrs(cv)
+        _addTwistAttrs(tw)
+
+        (cv,) = cmds.parent(cv, cvBfr)
+        (twBfr,) = cmds.parent(twBfr, cv)
+        (tw,) = cmds.parent(tw, twBfr)
+        cmds.xform(cvBfr, translation=(spread * 3 * i, 0, 0))
+        cvs.append(cv)
+        tws.append(tw)
+        cvBfrs.append(cvBfr)
+        twBfrs.append(twBfr)
+    return cvs, tws, cvBfrs, twBfrs
+
+
+def _makeTanCtrls(numCVs, closed, inTanCtrl, outTanCtrl, pfx, cvs, spread):
+    """make the tangents and auto-tangents"""
+    oTans, iTans, aoTans, aiTans = [], [], [], []
+    segments = numCVs if closed else numCVs - 1
+    for i in range(segments):
+        # make oTan, and iTan
+        otNum = i
+        itNum = (i + 1) % numCVs
+
+        oTan = cmds.duplicate(outTanCtrl, name=CTRL_OUTTAN_FMT.format(pfx, otNum + 1))[0]
+        iTan = cmds.duplicate(inTanCtrl, name=CTRL_INTAN_FMT.format(pfx, itNum + 1))[0]
+
+        _addTangentAttrs(iTan)
+        _addTangentAttrs(oTan)
+
+        aoTanName = BFR_AOUTTAN_FMT.format(pfx, otNum + 1)
+        aiTanName = BFR_AINTAN_FMT.format(pfx, itNum + 1)
+        aoTan = cmds.createNode("transform", name=aoTanName, parent=cvs[otNum])
+        aiTan = cmds.createNode("transform", name=aiTanName, parent=cvs[itNum])
+
+        oTan = cmds.parent(oTan, cvs[otNum])[0]
+        iTan = cmds.parent(iTan, cvs[itNum])[0]
+
+        cmds.xform(oTan, translation=(spread, 0, 0))
+        cmds.xform(iTan, translation=(-spread, 0, 0))
+        cmds.xform(aoTan, translation=(spread, 0, 0))
+        cmds.xform(aiTan, translation=(-spread, 0, 0))
+
+        oTans.append(oTan)
+        iTans.append(iTan)
+        aoTans.append(aoTan)
+        aiTans.append(aiTan)
+
+        for nd in [aiTan, aoTan]:
+            cmds.setAttr(f"{nd}.overrideEnabled", 1)
+            cmds.setAttr(f"{nd}.overrideDisplayType", 2)
+            cmds.setAttr(f"{nd}.visibility", 0)
+
+        makeLinkLine(aoTan, cvs[otNum], selectNode=oTan)
+        makeLinkLine(aiTan, cvs[itNum], selectNode=iTan)
+
+    return oTans, iTans, aoTans, aiTans
+
+
+def _makeSingleNodeTanCtrls(numCVs, closed, inTanCtrl, outTanCtrl, pfx, cvs, spread):
+    """make the tangents and auto-tangents"""
+    oCtrls, iCtrls, oBfrs, iBfrs, oRests, iRests = [], [], [], [], [], []
+
+    segments = numCVs if closed else numCVs - 1
+    for i in range(segments):
+        # make oTan, and iTan
+        otNum = i
+        itNum = (i + 1) % numCVs
+
+        oRest = cmds.createNode("transform", name=BFR_AOUTREST_FMT.format(pfx, otNum + 1))
+        iRest = cmds.createNode("transform", name=BFR_AINREST_FMT.format(pfx, itNum + 1))
+        oBfr = cmds.createNode("transform", name=BFR_AOUTTAN_FMT.format(pfx, otNum + 1))
+        iBfr = cmds.createNode("transform", name=BFR_AINTAN_FMT.format(pfx, itNum + 1))
+        oCtrl = cmds.duplicate(outTanCtrl, name=CTRL_OUTTAN_FMT.format(pfx, otNum + 1))[0]
+        iCtrl = cmds.duplicate(inTanCtrl, name=CTRL_INTAN_FMT.format(pfx, itNum + 1))[0]
+        _addTangentAttrs(oCtrl)
+        _addTangentAttrs(iCtrl)
+        cmds.parent(oCtrl, oBfr)
+        cmds.parent(iCtrl, iBfr)
+        cmds.parent(oBfr, oRest)
+        cmds.parent(iBfr, iRest)
+        cmds.parent(oRest, cvs[otNum])
+        cmds.parent(iRest, cvs[itNum])
+        cmds.xform(oRest, translation=(spread, 0, 0))
+        cmds.xform(iRest, translation=(-spread, 0, 0))
+
+        oCtrls.append(oCtrl)
+        iCtrls.append(iCtrl)
+        oBfrs.append(oBfr)
+        iBfrs.append(iBfr)
+        oRests.append(oRest)
+        iRests.append(iRest)
+
+        makeLinkLine(oCtrl, cvs[otNum], selectNode=oCtrl)
+        makeLinkLine(iCtrl, cvs[itNum], selectNode=iCtrl)
+
+    return oCtrls, iCtrls, oBfrs, iBfrs, oRests, iRests
+
+
+def mkTwistSplineControllers(pfx, numCVs, spread, closed=False, singleTangentNode=True):
     """Make and position all the controller objects
 
     Arguments:
@@ -231,165 +440,26 @@ def mkTwistSplineControllers(pfx, numCVs, spread, closed=False):
             [str, ...]: All the Twister Buffers
             str: The base controller
     """
-
     # Make bases for the controllers
     cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl = _mkMasterControllers()
 
-    master = cmds.duplicate(masterCtrl, name=MASTER_FMT.format(pfx))[0]
-    cmds.addAttr(master, longName="Offset", attributeType="double", defaultValue=0.0)
-    cmds.setAttr(f"{master}.Offset", edit=True, keyable=True)
-    cmds.addAttr(
-        master, longName="Stretch", attributeType="double", defaultValue=1.0, minValue=0.0001
-    )
-    cmds.setAttr(f"{master}.Stretch", edit=True, keyable=True)
-
-    # make the requested number of CV's
-    # don't hide the .rx attribute
-    cvs, tws, cvBfrs, twBfrs = [], [], [], []
-    controlsGrp = cmds.createNode("transform", name=CTRL_ORG_FMT.format(pfx))
-    cmds.parentConstraint(master, controlsGrp, mo=True)
-    cmds.scaleConstraint(master, controlsGrp, mo=True)
-
-    for i in range(numCVs):
-        cvBfr = cmds.createNode("transform", name=BFR_CV_FMT.format(pfx, i + 1), parent=controlsGrp)
-        cv = cmds.duplicate(cvCtrl, name=CTRL_CV_FMT.format(pfx, i + 1))[0]
-        twBfr = cmds.createNode(
-            "transform", name=BFR_TWIST_FMT.format(pfx, i + 1), parent=controlsGrp
+    master = _makeMaster(masterCtrl, pfx)
+    cvs, tws, cvBfrs, twBfrs = _makeCVs(numCVs, spread, master, pfx, cvCtrl, twistCtrl)
+    if singleTangentNode:
+        oCtrls, iCtrls, oBfrs, iBfrs, oRests, iRests = _makeSingleNodeTanCtrls(
+            numCVs, closed, inTanCtrl, outTanCtrl, pfx, cvs, spread
         )
-        tw = cmds.duplicate(twistCtrl, name=CTRL_TWIST_FMT.format(pfx, i + 1))[0]
-
-        cmds.addAttr(
-            cv, longName="Pin", attributeType="double", defaultValue=0.0, minValue=0.0, maxValue=1.0
+    else:
+        oRests, iRests = None, None
+        oCtrls, iCtrls, oBfrs, iBfrs = _makeTanCtrls(
+            numCVs, closed, inTanCtrl, outTanCtrl, pfx, cvs, spread
         )
-        cmds.setAttr(f"{cv}.Pin", edit=True, keyable=True)
-        cmds.addAttr(
-            cv, longName="PinParam", attributeType="double", defaultValue=0.0, minValue=0.0
-        )
-        cmds.setAttr(f"{cv}.PinParam", edit=True, keyable=True)
-
-        for h in [".tx", ".ty", ".tz", ".ry", ".rz", ".sx", ".sy", ".sz", ".v"]:
-            cmds.setAttr(tw + h, lock=True, keyable=False, channelBox=False)
-        cmds.addAttr(
-            tw,
-            longName="UseTwist",
-            attributeType="double",
-            defaultValue=0.0,
-            minValue=0.0,
-            maxValue=1.0,
-        )
-        cmds.setAttr(f"{tw}.UseTwist", edit=True, keyable=True)
-        (cv,) = cmds.parent(cv, cvBfr)
-        (twBfr,) = cmds.parent(twBfr, cv)
-        (tw,) = cmds.parent(tw, twBfr)
-        cmds.xform(cvBfr, translation=(spread * 3 * i, 0, 0))
-        cvs.append(cv)
-        tws.append(tw)
-        cvBfrs.append(cvBfr)
-        twBfrs.append(twBfr)
-
-    # make the tangents and auto-tangents
-    oTans, iTans, aoTans, aiTans = [], [], [], []
-
-    segments = numCVs if closed else numCVs - 1
-    for i in range(segments):
-        # make oTan, and iTan
-        otNum = i
-        itNum = (i + 1) % numCVs
-
-        oTan = cmds.duplicate(outTanCtrl, name=CTRL_OUTTAN_FMT.format(pfx, otNum + 1))[0]
-        iTan = cmds.duplicate(inTanCtrl, name=CTRL_INTAN_FMT.format(pfx, itNum + 1))[0]
-        for ndTan in [oTan, iTan]:
-            cmds.addAttr(
-                ndTan,
-                longName="Auto",
-                attributeType="double",
-                defaultValue=1.0,
-                minValue=0.0,
-                maxValue=1.0,
-            )
-            cmds.setAttr(f"{ndTan}.Auto", edit=True, keyable=True)
-            cmds.addAttr(
-                ndTan,
-                longName="Smooth",
-                attributeType="double",
-                defaultValue=1.0,
-                minValue=0.0,
-                maxValue=1.0,
-            )
-            cmds.setAttr(f"{ndTan}.Smooth", edit=True, keyable=True)
-            cmds.addAttr(
-                ndTan,
-                longName="Weight",
-                attributeType="double",
-                defaultValue=1.0,
-                minValue=0.0001,
-                maxValue=5.0,
-            )
-            cmds.setAttr(f"{ndTan}.Weight", edit=True, keyable=True)
-
-        cmds.xform(oTan, translation=(spread * (3 * otNum + 1), 0, 0))
-        cmds.xform(iTan, translation=(spread * (3 * itNum - 1), 0, 0))
-
-        aoTan = cmds.createNode(
-            "transform", name=BFR_AOUTTAN_FMT.format(pfx, otNum + 1), parent=cvs[otNum]
-        )
-        aiTan = cmds.createNode(
-            "transform", name=BFR_AINTAN_FMT.format(pfx, itNum + 1), parent=cvs[itNum]
-        )
-
-        cmds.xform(aoTan, translation=(spread * (3 * otNum + 1), 0, 0))
-        cmds.xform(aiTan, translation=(spread * (3 * itNum - 1), 0, 0))
-        oTan = cmds.parent(oTan, cvs[otNum])[0]
-        iTan = cmds.parent(iTan, cvs[itNum])[0]
-
-        oTans.append(oTan)
-        iTans.append(iTan)
-        aoTans.append(aoTan)
-        aiTans.append(aiTan)
-
-        for nd in [aiTan, aoTan]:
-            cmds.setAttr(f"{nd}.overrideEnabled", 1)
-            cmds.setAttr(f"{nd}.overrideDisplayType", 2)
-            cmds.setAttr(f"{nd}.visibility", 0)
-
-        makeLinkLine(aoTan, cvs[otNum], selectNode=oTan)
-        makeLinkLine(aiTan, cvs[itNum], selectNode=iTan)
 
     cmds.delete((cvCtrl, outTanCtrl, inTanCtrl, twistCtrl, masterCtrl))
-    return cvs, cvBfrs, oTans, iTans, aoTans, aiTans, tws, twBfrs, master
+    return cvs, cvBfrs, oBfrs, iBfrs, oRests, iRests, oCtrls, iCtrls, tws, twBfrs, master
 
 
-def createTwistSetup(pre, cur, post, buf, isFirst=False, isLast=False):
-    """Create an auto-twist setup for a set of CVs
-
-    Arguments:
-            pre (str): The previous CV for auto-tangent calculations
-            cur (str): The CV that will have its auto-twist connected
-            post (str): The next CV for auto-tangent calculations
-            buf (str): The Buffer that will have its auto-twist connected
-            isFirst (bool): Whether this segment is the first one in the spline
-            isLast (bool): Whether this segment is the last one in the spline
-    """
-    twt = cmds.createNode("twistTangent", name="twistAuto")
-    dcm = cmds.createNode("decomposeMatrix", name="twistDecompose")
-
-    if isLast:
-        cmds.setAttr(f"{twt}.backpoint", True)
-    if isFirst or isLast:
-        cmds.setAttr(f"{twt}.endpoint", True)
-
-    cmds.connectAttr(f"{pre}.worldMatrix[0]", f"{twt}.previousVertex")
-    cmds.connectAttr(f"{cur}.worldMatrix[0]", f"{twt}.currentVertex")
-    cmds.connectAttr(f"{post}.worldMatrix[0]", f"{twt}.nextVertex")
-
-    cmds.connectAttr(f"{buf}.parentInverseMatrix[0]", f"{twt}.parentInverseMatrix")
-    cmds.connectAttr(f"{twt}.outTwistMat", f"{dcm}.inputMatrix")
-    cmds.connectAttr(f"{dcm}.outputRotate", f"{buf}.rotate")
-    cmds.connectAttr(f"{dcm}.outputScale", f"{buf}.scale")
-    cmds.connectAttr(f"{dcm}.outputTranslate", f"{buf}.translate")
-
-
-def createTangentSegmentSetup(
+def _createTangentSegmentSetup(
     pre, start, end, nxt, oTan, iTan, aoTan, aiTan, isFirst=False, isLast=False
 ):
     """Create a single twist spline tangent setup for a single segment
@@ -410,9 +480,9 @@ def createTangentSegmentSetup(
             isLast (bool): Whether this segment is the last one in the spline
     """
     # connect all the in/out tangents
-    ott = cmds.createNode(
-        "twistTangent", name="twistTangentOut"
-    )  # TODO: make with name based on oTan
+    # TODO: make with name based on oTan
+    ott = cmds.createNode("twistTangent", name="twistTangentOut")
+
     cmds.connectAttr(f"{oTan}.worldMatrix[0]", f"{ott}.inTangent")
     cmds.connectAttr(f"{oTan}.Auto", f"{ott}.auto")
     cmds.connectAttr(f"{oTan}.Smooth", f"{ott}.smooth")
@@ -426,9 +496,8 @@ def createTangentSegmentSetup(
     cmds.connectAttr(f"{end}.worldMatrix[0]", f"{ott}.nextVertex")
     cmds.setAttr(f"{oTan}.Auto", 1.0)
 
-    itt = cmds.createNode(
-        "twistTangent", name="twistTangentIn"
-    )  # TODO: make with name based on iTan
+    # TODO: make with name based on iTan
+    itt = cmds.createNode("twistTangent", name="twistTangentIn")
     cmds.connectAttr(f"{iTan}.worldMatrix[0]", f"{itt}.inTangent")
     cmds.connectAttr(f"{iTan}.Auto", f"{itt}.auto")
     cmds.connectAttr(f"{iTan}.Smooth", f"{itt}.smooth")
@@ -473,7 +542,7 @@ def connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed
         start = cvs[i]
         end = cvs[(i + 1) % len(cvs)]
         nxt = cvs[(i + 2) % len(cvs)]
-        createTangentSegmentSetup(
+        _createTangentSegmentSetup(
             pre,
             start,
             end,
@@ -496,10 +565,78 @@ def connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed
         pre = cvs[i - 1] if not isFirst else cvs[(i + 2) % len(cvs)]
         post = cvs[(i + 1) % len(cvs)] if not isLast else cvs[i - 2]
 
-        createTwistSetup(pre, cur, post, buf, isFirst=isFirst, isLast=isLast)
+        twt = cmds.createNode("twistTangent", name="twistAuto")
+        dcm = cmds.createNode("decomposeMatrix", name="twistDecompose")
+
+        if isLast:
+            cmds.setAttr(f"{twt}.backpoint", True)
+        if isFirst or isLast:
+            cmds.setAttr(f"{twt}.endpoint", True)
+
+        cmds.connectAttr(f"{pre}.worldMatrix[0]", f"{twt}.previousVertex")
+        cmds.connectAttr(f"{cur}.worldMatrix[0]", f"{twt}.currentVertex")
+        cmds.connectAttr(f"{post}.worldMatrix[0]", f"{twt}.nextVertex")
+
+        cmds.connectAttr(f"{buf}.parentInverseMatrix[0]", f"{twt}.parentInverseMatrix")
+        cmds.connectAttr(f"{twt}.outTwistMat", f"{dcm}.inputMatrix")
+        cmds.connectAttr(f"{dcm}.outputRotate", f"{buf}.rotate")
+        cmds.connectAttr(f"{dcm}.outputScale", f"{buf}.scale")
+        cmds.connectAttr(f"{dcm}.outputTranslate", f"{buf}.translate")
 
 
-def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, master, closed=False):
+def connectTwistSplineMultiTangents(
+    cvs, twBfrs, oCtrls, iCtrls, oBfrs, iBfrs, oRests, iRests, closed=False
+):
+    """Connect all of the tangent setups for the spline controller objects
+
+    Arguments:
+            cvs ([str, ...]): A list of all the CV controllers
+            twBfrs ([str, ...]): A list of all the Twist Buffers
+            oBfrs ([str, ...]): A list of all the out-tangents
+            iBfrs ([str, ...]): A list of all the in-tangents
+            oRests ([str, ...]): A list of all the out-tangent rest positions
+            iRests ([str, ...]): A list of all the in-tangent rest positions
+            closed (bool): Whether the spline forms a closed loop
+    """
+
+    tmt = cmds.createNode("twistMultiTangent", name="twistMultiAuto")
+    if closed:
+        cmds.setAttr(f"{tmt}.closed", True)
+
+    for i in range(len(cvs)):
+        vt = f"{tmt}.vertTans[{i}]"
+        vd = f"{tmt}.vertData[{i}]"
+        cv = cvs[i]
+        twistBuf = twBfrs[i]
+
+        if i != 0:
+            inTanCtrl = iCtrls[i - 1]
+            inTanPar = iBfrs[i - 1]
+            inTanRest = iRests[i - 1]
+            cmds.connectAttr(f"{inTanPar}.parentInverseMatrix", f"{vd}.inParentInverseMatrix")
+            cmds.connectAttr(f"{inTanRest}.worldMatrix", f"{vd}.inTanMat")
+            cmds.connectAttr(f"{vt}.inVertTan", f"{inTanPar}.translate")
+            cmds.connectAttr(f"{inTanCtrl}.Auto", f"{vd}.inAuto")
+            cmds.connectAttr(f"{inTanCtrl}.Smooth", f"{vd}.inSmooth")
+            cmds.connectAttr(f"{inTanCtrl}.Weight", f"{vd}.inTanWeight")
+
+        cmds.connectAttr(f"{cv}.worldInverseMatrix", f"{vd}.twistParentInverseMatrix")
+        cmds.connectAttr(f"{cv}.worldMatrix", f"{vd}.vertMat")
+        cmds.connectAttr(f"{vt}.twistMat", f"{twistBuf}.offsetParentMatrix")
+
+        if i != len(cvs) - 1:
+            outTanCtrl = oCtrls[i]
+            outTanPar = oBfrs[i]
+            outTanRest = oRests[i]
+            cmds.connectAttr(f"{outTanPar}.parentInverseMatrix", f"{vd}.outParentInverseMatrix")
+            cmds.connectAttr(f"{outTanRest}.worldMatrix", f"{vd}.outTanMat")
+            cmds.connectAttr(f"{vt}.outVertTan", f"{outTanPar}.translate")
+            cmds.connectAttr(f"{outTanCtrl}.Auto", f"{vd}.outAuto")
+            cmds.connectAttr(f"{outTanCtrl}.Smooth", f"{vd}.outSmooth")
+            cmds.connectAttr(f"{outTanCtrl}.Weight", f"{vd}.outTanWeight")
+
+
+def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, master, closed=False, twistMul=-1.0):
     """Given all the controller objects, build a twist spline
 
     Arguments:
@@ -522,32 +659,45 @@ def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, master, closed=Fal
 
     # build the spline object and set the spline Params
     splineTfm = cmds.createNode("transform", name=SPLINE_FMT.format(pfx))
-    spline = cmds.createNode("twistSpline", parent=splineTfm, name=SPLINE_FMT.format(pfx) + "Shape")
+    spline = cmds.createNode("twistSpline", parent=splineTfm, name=f"{SPLINE_FMT.format(pfx)}Shape")
+
+    cmds.setAttr(f"{spline}.twistMultiplier", twistMul)
 
     # Don't connect a first in tangent
     for i, aiTan in enumerate(aiTans):
-        cmds.connectAttr(f"{aiTan}.worldMatrix[0]", f"{spline}.vertexData[{i + 1}].inTangent")
+        cmds.connectAttr(
+            f"{aiTan}.worldMatrix[0]",
+            f"{spline}.vertexData[{i + 1}].inTangent",
+        )
 
     # Don't connect a last out tangent
     for i, aoTan in enumerate(aoTans):
-        cmds.connectAttr(f"{aoTan}.worldMatrix[0]", f"{spline}.vertexData[{i}].outTangent")
+        cmds.connectAttr(
+            f"{aoTan}.worldMatrix[0]",
+            f"{spline}.vertexData[{i}].outTangent",
+        )
 
     for u in range(usedCVs):
         i = u % numCVs
-        cmds.connectAttr(f"{cvs[i]}.worldMatrix[0]", f"{spline}.vertexData[{u}].controlVertex")
-        cmds.connectAttr(f"{cvs[i]}.Pin", f"{spline}.vertexData[{u}].paramWeight")
+        vdu = f"{spline}.vertexData[{u}]"
+
+        cmds.connectAttr(
+            f"{cvs[i]}.worldMatrix[0]",
+            f"{vdu}.controlVertex",
+        )
+        cmds.connectAttr(f"{cvs[i]}.Pin", f"{vdu}.paramWeight")
         if u != i:
             # The paramValue needs an offset if we're at the last connection of a closed spline
             adL = cmds.createNode("addDoubleLinear")
             cmds.setAttr(f"{adL}.input2", maxParam)
-            cmds.connectAttr(f"{cvs[i]}.PinParam", f"{adL}.input1", f=True)
-            cmds.connectAttr(f"{adL}.output", f"{spline}.vertexData[{u}].paramValue", f=True)
+            cmds.connectAttr(f"{cvs[i]}.PinParam", f"{adL}.input1", force=True)
+            cmds.connectAttr(f"{adL}.output", f"{vdu}.paramValue", force=True)
         else:
-            cmds.connectAttr(f"{cvs[i]}.PinParam", f"{spline}.vertexData[{u}].paramValue")
+            cmds.connectAttr(f"{cvs[i]}.PinParam", f"{vdu}.paramValue")
             cmds.setAttr(f"{cvs[i]}.PinParam", (u * maxParam) / (usedCVs - 1.0))
 
-        cmds.connectAttr(f"{tws[i]}.UseTwist", f"{spline}.vertexData[{u}].twistWeight")
-        cmds.connectAttr(f"{tws[i]}.rotateX", f"{spline}.vertexData[{u}].twistValue")
+        cmds.connectAttr(f"{tws[i]}.UseTwist", f"{vdu}.twistWeight")
+        cmds.connectAttr(f"{tws[i]}.rotateX", f"{vdu}.twistValue")
 
     cmds.setAttr(f"{cvs[0]}.Pin", 1.0)
     cmds.setAttr(f"{tws[0]}.UseTwist", 1.0)
@@ -605,14 +755,19 @@ def buildRiders(pfx, spline, master, numJoints, closed=False):
             f"{jPars[i]}.parentInverseMatrix[0]",
             f"{cnst}.params[{i}].parentInverseMatrix",
         )
-        cmds.connectAttr(f"{cnst}.outputs[{i}].translate", f"{jPars[i]}.translate")
+        cmds.connectAttr(
+            f"{cnst}.outputs[{i}].translate",
+            f"{jPars[i]}.translate",
+        )
         cmds.connectAttr(f"{cnst}.outputs[{i}].rotate", f"{jPars[i]}.rotate")
         cmds.connectAttr(f"{cnst}.outputs[{i}].scale", f"{jPars[i]}.scale")
 
     return jPars, joints, jointsGrp, cnst
 
 
-def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed=False):
+def makeTwistSpline(
+    pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed=False, singleTangentNode=True
+):
     """Make a twist spline
 
     Arguments:
@@ -646,12 +801,21 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed
 
     maxParam *= 3.0 * spread
 
-    cvs, cvBfrs, oTans, iTans, aoTans, aiTans, tws, twBfrs, master = mkTwistSplineControllers(
-        pfx, numCVs, spread, closed=closed
+    cvs, cvBfrs, oBfrs, iBfrs, oRests, iRests, oCtrls, iCtrls, tws, twBfrs, master = (
+        mkTwistSplineControllers(
+            pfx, numCVs, spread, closed=closed, singleTangentNode=singleTangentNode
+        )
     )
-    connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed=closed)
+
+    if singleTangentNode:
+        connectTwistSplineMultiTangents(
+            cvs, twBfrs, oCtrls, iCtrls, oBfrs, iBfrs, oRests, iRests, closed=closed
+        )
+    else:
+        connectTwistSplineTangents(cvs, twBfrs, oCtrls, iCtrls, oBfrs, iBfrs, closed=closed)
+
     splineTfm, splineShape = buildTwistSpline(
-        pfx, cvs, aoTans, aiTans, tws, maxParam, master, closed=closed
+        pfx, cvs, oCtrls, iCtrls, tws, maxParam, master, closed=closed, twistMul=-1.0
     )
 
     jPars, joints, group, cnst = None, None, None, None
@@ -661,12 +825,12 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed
         # The scale of the overall spline should not affect the scale of the riders for now
         # Eventually, the rider constraint will handle interpolated scales
         # dnMultDivide = cmds.createNode("multiplyDivide")
-        # cmds.setAttr("{0}.operation".format(dnMultDivide), 2)
-        # cmds.setAttr("{0}.input1".format(dnMultDivide), 1, 1, 1)
-        # cmds.connectAttr("{0}.scale".format(master), "{0}.input2".format(dnMultDivide), f=True)
-        # cmds.connectAttr("{0}.outputX".format(dnMultDivide), "{0}.normValue".format(cnst), f=True)
+        # cmds.setAttr(f"{dnMultDivide}.operation", 2)
+        # cmds.setAttr(f"{dnMultDivide}.input1", 1, 1, 1)
+        # cmds.connectAttr(f"{master}.scale", f"{dnMultDivide}.input2", force=True)
+        # cmds.connectAttr(f"{dnMultDivide}.outputX", f"{cnst}.normValue", force=True)
 
-    return cvs, cvBfrs, oTans, iTans, jPars, joints, group, splineTfm, master, cnst
+    return cvs, cvBfrs, oCtrls, iCtrls, jPars, joints, group, splineTfm, master, cnst
 
 
 def _bezierConvert(crv):
@@ -698,7 +862,7 @@ def _bezierConvert(crv):
     return None, []
 
 
-def convertToTwistSpline(pfx, crv, numJoints=10):
+def convertToTwistSpline(pfx, crv, numJoints=10, singleTangentNode=True):
     """Convert a given NURBS or Bezier curve to a TwistSpline
 
     Arguments:
@@ -736,7 +900,7 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
     # Get the point data
     # I could do it with cmds if I wanted, but I would have to un-flatten the list
     # it's annoying either way
-    # allPos = cmds.xform("{0}.cv[*]".format(crvShape), q=True, worldSpace=True, translation=True)
+    # allPos = cmds.xform(f"{crvShape}.cv[*]", query=True, worldSpace=True, translation=True)
     allPos = OpenMaya.MPointArray()
     curveFn.getCVs(allPos)
     # Just testing a micro-optimization
@@ -746,13 +910,19 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 
     # Build the spline
     tempRet = makeTwistSpline(
-        pfx, numCVs, numJoints=numJoints, maxParam=curveLen / 3.0, spread=1.0, closed=isClosed
+        pfx,
+        numCVs,
+        numJoints=numJoints,
+        maxParam=curveLen / 3.0,
+        spread=1.0,
+        closed=isClosed,
+        singleTangentNode=singleTangentNode,
     )
     cvs, bfrs, oTans, iTans, jPars, joints, group, spline, master, riderCnst = tempRet
 
     # Set the positions
     for pos, cv in zip(allPos[::3], bfrs):
-        cmds.xform(cv, ws=True, a=True, t=pos)
+        cmds.xform(cv, worldSpace=True, absolute=True, translation=pos)
 
     # Pin all the controllers so no length preservation happens
     # That way we can get the rotations at each param
@@ -760,11 +930,11 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
         cmds.setAttr(f"{cv}.Pin", 1)
 
     for pos, cv in zip(allPos[1::3], oTans):
-        cmds.xform(cv, ws=True, a=True, t=pos)
+        cmds.xform(cv, worldSpace=True, absolute=True, translation=pos)
         cmds.setAttr(f"{cv}.Auto", 0)
 
     for pos, cv in zip(allPos[2::3], iTans):
-        cmds.xform(cv, ws=True, a=True, t=pos)
+        cmds.xform(cv, worldSpace=True, absolute=True, translation=pos)
         cmds.setAttr(f"{cv}.Auto", 0)
 
     # Make sure there is a rider constraint so I can follow the twist all along the spline
@@ -792,11 +962,11 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
 
     # Re-set the tangent worldspace positions now that things have changed
     for pos, cv in zip(allPos[1::3], oTans):
-        cmds.xform(cv, ws=True, a=True, t=pos)
+        cmds.xform(cv, worldSpace=True, absolute=True, translation=pos)
         cmds.setAttr(f"{cv}.Auto", 0)
 
     for pos, cv in zip(allPos[2::3], iTans):
-        cmds.xform(cv, ws=True, a=True, t=pos)
+        cmds.xform(cv, worldSpace=True, absolute=True, translation=pos)
         cmds.setAttr(f"{cv}.Auto", 0)
 
     # Delete the extra joint group and the constraint if I had to make 'em
@@ -809,7 +979,7 @@ def convertToTwistSpline(pfx, crv, numJoints=10):
             cmds.setAttr(f"{bfr}.{att}", lock=True)
 
 
-def convertSelectedToTwistSpline(pfx, numJoints=10):
+def convertSelectedToTwistSpline(pfx, numJoints=10, singleTangentNode=True):
     sel = cmds.ls(sl=True)
     for s in sel:
-        convertToTwistSpline(pfx, s, numJoints=numJoints)
+        convertToTwistSpline(pfx, s, numJoints=numJoints, singleTangentNode=singleTangentNode)

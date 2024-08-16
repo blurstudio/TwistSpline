@@ -41,6 +41,7 @@ public:
 	static MObject aRotateOrder;
 	static MObject aGlobalOffset;
 	static MObject aGlobalSpread;
+	static MObject aScaleCompensation;
 	static MObject aUseCycle;
 	static MObject aNormalize;
 	static MObject aNormValue;

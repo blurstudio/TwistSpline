@@ -392,7 +392,7 @@ def connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed
 
 		createTwistSetup(pre, cur, post, buf, isFirst=isFirst, isLast=isLast)
 
-def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=False):
+def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, master, closed=False):
 	""" Given all the controller objects, build a twist spline
 
 	Arguments:
@@ -445,6 +445,9 @@ def buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=False):
 	cmds.setAttr("{}.Pin".format(cvs[0]), 1.0)
 	cmds.setAttr("{}.UseTwist".format(tws[0]), 1.0)
 
+	# Connect the scaleCompensation parameter
+	cmds.connectAttr("{}.scaleX".format(master), "{}.scaleCompensation".format(spline))
+
 	return splineTfm, spline
 
 def buildRiders(pfx, spline, master, numJoints, closed=False):
@@ -478,6 +481,8 @@ def buildRiders(pfx, spline, master, numJoints, closed=False):
 	cnst = cmds.createNode("riderConstraint")
 	cmds.connectAttr("{}.Offset".format(master), "{}.globalOffset".format(cnst))
 	cmds.connectAttr("{}.Stretch".format(master), "{}.globalSpread".format(cnst))
+	# Connect the scaleCompensation from the spline's twin attribute
+	cmds.connectAttr("{}.scaleCompensation".format(spline), "{}.scaleCompensation".format(cnst))
 	if closed:
 		cmds.setAttr("{}.useCycle".format(cnst), 1)
 
@@ -531,7 +536,7 @@ def makeTwistSpline(pfx, numCVs, numJoints=10, maxParam=None, spread=1.0, closed
 
 	cvs, cvBfrs, oTans, iTans, aoTans, aiTans, tws, twBfrs, master = mkTwistSplineControllers(pfx, numCVs, spread, closed=closed)
 	connectTwistSplineTangents(cvs, twBfrs, oTans, iTans, aoTans, aiTans, closed=closed)
-	splineTfm, splineShape = buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, closed=closed)
+	splineTfm, splineShape = buildTwistSpline(pfx, cvs, aoTans, aiTans, tws, maxParam, master, closed=closed)
 
 	jPars, joints, group, cnst = None, None, None, None
 	if numJoints > 0:

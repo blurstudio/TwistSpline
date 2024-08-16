@@ -79,6 +79,7 @@ MObject TwistSplineNode::aTwistWeight;
 MObject TwistSplineNode::aUseOrient;
 
 MObject TwistSplineNode::aGeometryChanging;
+MObject TwistSplineNode::aScaleCompensation;
 MObject TwistSplineNode::aSplineDisplay;
 MObject TwistSplineNode::aDebugDisplay;
 MObject TwistSplineNode::aDebugScale;
@@ -116,6 +117,8 @@ MStatus TwistSplineNode::initialize() {
 
 	//--------------- Input -------------------
 
+	aScaleCompensation = nAttr.create("scaleCompensation", "sclcmp", MFnNumericData::kDouble, 1.0);
+	addAttribute(aScaleCompensation);
 	aSplineDisplay = nAttr.create("splineDisplay", "sd", MFnNumericData::kBoolean, true);
 	addAttribute(aSplineDisplay);
 	aDebugDisplay = nAttr.create("debugDisplay", "dd", MFnNumericData::kBoolean, false);
@@ -166,6 +169,7 @@ MStatus TwistSplineNode::initialize() {
 
 	addAttribute(aVertexData);
 
+	attributeAffects(aScaleCompensation, aOutputSpline);
 	attributeAffects(aInTangent, aOutputSpline);
 	attributeAffects(aControlVertex, aOutputSpline);
 	attributeAffects(aOutTangent, aOutputSpline);
@@ -176,6 +180,7 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aUseOrient, aOutputSpline);
 	attributeAffects(aMaxVertices, aOutputSpline);
 
+	attributeAffects(aScaleCompensation, aNurbsData);
 	attributeAffects(aInTangent, aNurbsData);
 	attributeAffects(aControlVertex, aNurbsData);
 	attributeAffects(aOutTangent, aNurbsData);
@@ -192,6 +197,7 @@ MStatus TwistSplineNode::initialize() {
 	attributeAffects(aMaxVertices, aSplineLength);
 
 	// Geometry changing
+	attributeAffects(aScaleCompensation, aGeometryChanging);
 	attributeAffects(aInTangent, aGeometryChanging);
 	attributeAffects(aControlVertex, aGeometryChanging);
 	attributeAffects(aOutTangent, aGeometryChanging);
@@ -262,9 +268,15 @@ void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
 			drawPlug.getValue(oDraw);
 		}
 
+		MPlug scaleCompPlug(mobj, aScaleCompensation);
+		double scaleComp = 1.0;
+		if (!scaleCompPlug.isNull())
+			scaleCompPlug.getValue(scaleComp);
+
 		MPlug scalePlug(mobj, aDebugScale);
 		if (!scalePlug.isNull()) {
 			scalePlug.getValue(oScale);
+			oScale *= scaleComp;
 		}
 	}
 
@@ -287,6 +299,9 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		MDataHandle hMaxVertices = data.inputValue(aMaxVertices);
 		int maxVertices = hMaxVertices.asInt();
 
+		MDataHandle scaleCompH = data.inputValue(aScaleCompensation);
+		double scaleComp = scaleCompH.asDouble();
+
 		// loop over the input matrices
 		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
 		unsigned ecount = inputs.elementCount();
@@ -302,8 +317,11 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto group = inputs.inputValue();
 
-			lockPositions.push_back(group.child(aParamValue).asDouble());
+			// Ensure all parameters are scale compensated when the global rig is scaled.
+			lockPositions.push_back(group.child(aParamValue).asDouble() * scaleComp);
 
+			// The lock value has to be scaled up when the global rig scales, so multiply
+			// it by the scale compensation plug value.
 			double lockIt = group.child(aParamWeight).asDouble();
 			lockVals.push_back(lockIt);
 			if (lockIt > 0.0) gotLocks = true;
@@ -492,7 +510,8 @@ MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 		if (plug == aInTangent || plug == aOutTangent ||
 			plug == aControlVertex || plug == aMaxVertices ||
 			plug == aParamValue || plug == aParamWeight ||
-			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient) {
+			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient ||
+			plug == aScaleCompensation) {
 			MObject thisNode = thisMObject();
 			MPlug outputSplinePlug(thisNode, aOutputSpline);
 			MPlug nurbsDataPlug(thisNode, aNurbsData);

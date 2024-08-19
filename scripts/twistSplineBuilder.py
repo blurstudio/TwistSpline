@@ -811,11 +811,13 @@ def makeTwistSpline(
         connectTwistSplineMultiTangents(
             cvs, twBfrs, oCtrls, iCtrls, oBfrs, iBfrs, oRests, iRests, closed=closed
         )
+        twistMul = 1.0
     else:
         connectTwistSplineTangents(cvs, twBfrs, oCtrls, iCtrls, oBfrs, iBfrs, closed=closed)
+        twistMul = -1.0
 
     splineTfm, splineShape = buildTwistSpline(
-        pfx, cvs, oCtrls, iCtrls, tws, maxParam, master, closed=closed, twistMul=-1.0
+        pfx, cvs, oCtrls, iCtrls, tws, maxParam, master, closed=closed, twistMul=twistMul
     )
 
     jPars, joints, group, cnst = None, None, None, None

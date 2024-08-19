@@ -37,6 +37,8 @@ SOFTWARE.
 #include <maya/MFnUnitAttribute.h>
 #include <maya/MGlobal.h>
 #include <maya/MMatrix.h>
+#include <maya/MTransformationMatrix.h>
+#include <maya/MQuaternion.h>
 #include <maya/MPlug.h>
 #include <maya/MTypes.h>
 #include <maya/MVector.h>
@@ -209,7 +211,6 @@ MStatus TwistMultiTangentNode::initialize()
     aClosed = num_attr.create("closed", "cl", MFnNumericData::kBoolean, false, &status);
     num_attr.setKeyable(true);
     num_attr.setStorable(true);
-    num_attr.setMin(2);
     addAttribute(aClosed);
 
     aInTanX =
@@ -650,7 +651,9 @@ MStatus TwistMultiTangentNode::compute(const MPlug &plug, MDataBlock &data)
         outTanLenHandle.setDouble(cur.outTan.doneTan.length());
 
         auto outMatHandle = outHandle.child(aOutTwistMat);
-        outMatHandle.setMMatrix(cur.smoothMat * cur.piTwist);
+
+        MTransformationMatrix oriMat = cur.smoothMat * cur.piTwist;
+        outMatHandle.setMMatrix(oriMat.rotation().asMatrix());
 
         auto outTwistHandle = outHandle.child(aOutTwistUp);
         outTwistHandle.set3Double(cur.tfmMat(1, 0), cur.tfmMat(1, 1), cur.tfmMat(1, 2));

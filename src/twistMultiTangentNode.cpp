@@ -542,14 +542,15 @@ MStatus TwistMultiTangentNode::compute(const MPlug &plug, MDataBlock &data)
 
     // Read everything
     MArrayDataHandle vertInputs = data.inputArrayValue(aVertData);
-    unsigned int icount = vertInputs.elementCount();
+    unsigned icount = vertInputs.elementCount();
 
     double startTension = data.inputValue(aStartTension).asDouble();
     double endTension = data.inputValue(aEndTension).asDouble();
-    int maxVertices = data.inputValue(aMaxVertices).asInt();
+    int rawMaxVertices = data.inputValue(aMaxVertices).asInt();
+    unsigned maxVertices = rawMaxVertices < 0 ? 0 : static_cast<unsigned>(rawMaxVertices);
     bool closed = data.inputValue(aClosed).asBool();
 
-    icount = (icount < maxVertices) ? icount : (unsigned int)maxVertices;
+    icount = (icount < maxVertices) ? icount : static_cast<unsigned> (maxVertices);
     if (icount < 2) {
         data.setClean(aInTan);
         data.setClean(aInTanLen);
@@ -574,7 +575,7 @@ MStatus TwistMultiTangentNode::compute(const MPlug &plug, MDataBlock &data)
     // Don't care which plug I'm being asked for. Just compute all of 'em
     std::vector<TanData> tanData;
 
-    for (size_t i = 0; i < icount; ++i) {
+    for (unsigned i = 0; i < icount; ++i) {
         TanData dat;
 
         vertInputs.jumpToArrayElement(i);
@@ -633,7 +634,7 @@ MStatus TwistMultiTangentNode::compute(const MPlug &plug, MDataBlock &data)
     auto outputs = data.outputArrayValue(aTangents);
     auto builder = outputs.builder();
     for (size_t i = 0; i < tanData.size(); ++i) {
-        auto outHandle = builder.addElement(i);
+        auto outHandle = builder.addElement(static_cast<unsigned>(i));
         auto &cur = tanData[i];
 
         auto inTanHandle = outHandle.child(aInTan);

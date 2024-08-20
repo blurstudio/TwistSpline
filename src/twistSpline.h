@@ -43,8 +43,8 @@ SOFTWARE.
   *       t-value is outside the range of the samp vector.
   * segIdx: The index of the segment
   */
-template <typename Float=double>
-void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &segIdx) {
+template <typename Float=double, typename IndexType=unsigned>
+void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, IndexType &segIdx) {
 	// Remap a length T-Value to a param TValue
 	auto ubIt = std::upper_bound(samp.begin(), samp.end(), t);
 	// get the new T value and the segment index
@@ -61,7 +61,7 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
 		// subtract 1 because (size-1) is the end index
 		// subtract another 1 because we're indexing into
 		// the segments between the samples
-		segIdx = samp.size() - 2;
+		segIdx = static_cast<unsigned>(samp.size()) - 2;
 		if (samp.size() > 1) {
 			segT = (t - samp[segIdx]) / (samp[segIdx + 1] - samp[segIdx]);
 		}
@@ -72,7 +72,7 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
 	else {
 		auto lbIt = ubIt - 1;
 		segT = (t - *lbIt) / (*ubIt - *lbIt);
-		segIdx = lbIt - samp.begin();
+		segIdx = static_cast<unsigned>(lbIt - samp.begin());
 		if (segIdx < samp.size() - 2 && segT > 0.99999999999) {
 			// Snap values close to the end to the next segment
 			// This removes a lot of jitter
@@ -93,19 +93,19 @@ void linearIndex(Float t, const std::vector<Float> &samp, Float &segT, size_t &s
   *       t-value is outside the range of the samp vector.
   * segIdx: The index for each segment
   */
-template <typename Float = double>
-void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Float> &samp, std::vector<Float> &segTs, std::vector<size_t> &segIdxs) {
+template <typename Float = double, typename IndexType=unsigned>
+void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Float> &samp, std::vector<Float> &segTs, std::vector<IndexType> &segIdxs) {
 	// The params aren't necessarily sorted, so to do the "merge", I have to sort them first.
 	// but, so I can 'unsort' them, I'm doing this the annoying way, by index
-	std::vector<size_t> pOrder(params.size());
+	std::vector<IndexType> pOrder(params.size());
 	std::iota(pOrder.begin(), pOrder.end(), 0);
-	sort(pOrder.begin(), pOrder.end(), [&params](size_t i1, size_t i2) {return params[i1] < params[i2]; });
+	sort(pOrder.begin(), pOrder.end(), [&params](IndexType i1, IndexType i2) {return params[i1] < params[i2]; });
 
-	size_t segIdx = 0;
+	IndexType segIdx = 0;
 	segTs.resize(params.size());
 	segIdxs.resize(params.size());
 	bool capped = false;
-	for (size_t i = 0; i < params.size(); ++i) {
+	for (IndexType i = 0; i < params.size(); ++i) {
 		Float t = params[pOrder[i]];
 		if (!capped && t >= params[segIdx + 1]) {
 			if (segIdx + 1 >= params.size()) {
@@ -132,7 +132,7 @@ void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Floa
   * Also, this class should not do any memory management as it will be
   * completely managed by it's parent TwistSpline instance
   */
-template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float = double>
+template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float = double, typename IndexType = unsigned>
 class TwistSplineSegment {
 private:
 	std::array<Point*, 4> verts; // Convenience pointers to the transforms
@@ -156,7 +156,7 @@ private:
 	VectorArray units; // unit vectors along the curve. Makes closest point lookup faster
 	Vector iNorm;
 	std::vector<Float> sampleLengths; // The sampleLength param for each point in the points
-	size_t lutSteps;
+	IndexType lutSteps;
 
 public:
 	/**
@@ -170,7 +170,7 @@ public:
 			Point *p0, Point *p1, Point *p2, Point *p3,
 			Point *s0, Point *s1, Point *s2, Point *s3,
 			Quat *q0, Quat *q1, Quat *q2, Quat *q3,
-			const Vector &iNorm, size_t lutSteps) {
+			const Vector &iNorm, IndexType lutSteps) {
 		verts[0] = p0; verts[1] = p1; verts[2] = p2; verts[3] = p3;
 		sclVerts[0] = s0; sclVerts[1] = s1; sclVerts[2] = s2; sclVerts[3] = s3;
 		quats[0] = q0; quats[1] = q1; quats[2] = q2; quats[3] = q3;
@@ -178,13 +178,13 @@ public:
 		this->lutSteps = lutSteps;
 
 		// resize the point-wise arrays
-		size_t pointSteps = lutSteps + 1;
+		IndexType pointSteps = lutSteps + 1;
 		resize(points, pointSteps);
 		resize(scales, pointSteps);
 		resize(tangents, pointSteps);
 		resize(rnormals, pointSteps);
 		resize(rbinormals, pointSteps);
-		resize(sampleLengths, pointSteps);
+		sampleLengths.resize(pointSteps);
 
 		// resize the line-wise arrays
 		resize(units, lutSteps);
@@ -225,7 +225,7 @@ public:
 	  * Get access to the internal data of the spline segment
 	  */
 	VectorArray& getUnits() { return units; }
-	size_t getLutSteps() { return lutSteps; }
+	IndexType getLutSteps() { return lutSteps; }
 	PointArray& getPoints() { return points; }
 	PointArray& getScales() { return scales; }
 	VectorArray& getTangents() { return tangents; }
@@ -238,7 +238,7 @@ public:
 
 	/// Get the arc-length of the spline
 	Float getLength() const {
-		size_t ss = sampleLengths.size();
+		IndexType ss = static_cast<IndexType>(sampleLengths.size());
 		if (ss) {
 			return sampleLengths[ss - 1];
 		}
@@ -322,17 +322,17 @@ public:
 
 	/// Build the xyz first and second derivatives of the spline
 	void buildDverts() {
-		for (size_t i = 0; i < 3; ++i)
+		for (IndexType i = 0; i < 3; ++i)
 			d1verts[i] = 3 * (*(verts[i + 1]) - (*(verts[i])));
 
-		for (size_t i = 0; i < 2; ++i)
+		for (IndexType i = 0; i < 2; ++i)
 			d2verts[i] = 2 * (d1verts[i + 1] - d1verts[i]);
 
 		// Also for scales
-		for (size_t i = 0; i < 3; ++i)
+		for (IndexType i = 0; i < 3; ++i)
 			s1verts[i] = 3 * (*(sclVerts[i + 1]) - (*(sclVerts[i])));
 
-		for (size_t i = 0; i < 2; ++i)
+		for (IndexType i = 0; i < 2; ++i)
 			s2verts[i] = 2 * (s1verts[i + 1] - s1verts[i]);
 	}
 
@@ -346,7 +346,7 @@ public:
 	  * So it follows that stepping to der1 values is just some linear function of the der2 values
 	  * Same with the output. There's complicated proof, but I think of it like forces pulling each other around
 	  */
-	static void computeSplinePoints(const std::array<Point*, 4> pts, size_t lutSteps, PointArray &pOut, VectorArray &tOut) {
+	static void computeSplinePoints(const std::array<Point*, 4> pts, IndexType lutSteps, PointArray &pOut, VectorArray &tOut) {
 		// Do the pre-calculations of the derivative vectors
 		Vector a = (*pts[3]) - 3 * (*pts[2]) + 3 * (*pts[1]) - (*pts[0]);
 		Vector b = 3 * (*pts[2]) - 6 * (*pts[1]) + 3 * (*pts[0]);
@@ -358,14 +358,14 @@ public:
 		Float h2 = h * h;
 		Float h3 = h2 * h;
 
-		size_t pointSteps = lutSteps + 1;
+		IndexType pointSteps = lutSteps + 1;
 
 		// Loop for positions
 		Vector fd = a * h3 + b * h2 + c * h;
 		Vector fd2 = 6 * a*h3 + 2 * b*h2;
 		Vector fd3 = 6 * a*h3;
 		pOut[0] = *pts[0];
-		for (size_t i = 1; i < pointSteps; i++) {
+		for (IndexType i = 1; i < pointSteps; i++) {
 			d += fd;
 			fd += fd2;
 			fd2 += fd3;
@@ -378,7 +378,7 @@ public:
 			Vector td = 3 * a*h2 + 2 * b*h;
 			Vector td2 = 6 * a*h2;
 			tOut[0] = normalized<Vector, Float>(tan);
-			for (size_t i = 1; i < pointSteps; i++) {
+			for (IndexType i = 1; i < pointSteps; i++) {
 				tan += td;
 				td += td2;
 				tOut[i] = normalized<Vector, Float>(tan);
@@ -395,7 +395,7 @@ public:
 	  * so that the reflected tangent matches the computed one. The resulting
 	  * up-vector is a surprisingly good approximation of the true RMF
 	  */
-	static void doubleReflect(const Vector &iNorm, const PointArray &points, const VectorArray &tangents, size_t lutSteps,
+	static void doubleReflect(const Vector &iNorm, const PointArray &points, const VectorArray &tangents, IndexType lutSteps,
 			VectorArray &normals, VectorArray &binormals,
 			std::vector<Float> &sampleLengths, VectorArray &units) {
 
@@ -404,7 +404,7 @@ public:
 		sampleLengths[0] = 0.0;
 
 		// A chunk of this loop could be parallelized
-		for (size_t i = 0; i < lutSteps; i++) {
+		for (IndexType i = 0; i < lutSteps; i++) {
 			Vector v1 = points[i + 1] - points[i];
 			Float v12 = dot<Vector, Float>(v1, v1);
 			Float c1 = 2.0 / v12;
@@ -457,7 +457,7 @@ public:
 		// t is 0-1 param of a lut segment
 		Float len = getLength();
 		Float t, segT, lenT = rawT * len;
-		size_t i;
+		IndexType i;
 		linearIndex(lenT, sampleLengths, t, i);
 		segT = (t + i) / lutSteps;
 		if (abs(t) < 1.0e-11) { // t == 0
@@ -522,7 +522,7 @@ public:
 			preNorm = rLi - c2 * dot<Vector, Float>(v2, rLi) * v2;
 		}
 		{
-			size_t e = i + 1;
+			IndexType e = i + 1;
 			Vector v1 = tran - points[e];
 			Float c1 = 2.0 / dot<Vector, Float>(v1, v1);
 			Vector tLi = tangents[e] - c1 * dot<Vector, Float>(v1, tangents[e]) * v1;
@@ -586,10 +586,12 @@ public:
 
 		resize(tnormals, size(rnormals));
 		resize(tbinormals, size(rbinormals));
-		resize(twistVals, size(rnormals));
+		twistVals.resize(size(rnormals));
+
+
 		Float len = getLength();
 
-		for (size_t i=0; i <= lutSteps; ++i){
+		for (IndexType i=0; i <= lutSteps; ++i){
 			Float perc = sampleLengths[i] / len; // parameterize by length
             Float angle = ((endAngle - startAngle) * perc) + startAngle;
 			twistVals[i] = angle;
@@ -627,7 +629,7 @@ public:
 // point lookup into something closer to a binary search.
 
 // Float default declared in the class prototype
-template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float>
+template <typename PointArray, typename Point, typename VectorArray, typename Vector, typename QuatArray, typename Quat, typename Float, typename IndexType>
 class TwistSpline {
 private:
 	std::vector<std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>> segments;
@@ -642,8 +644,8 @@ private:
 	std::vector<Float> orientLocks; // The [0-1] lock property for cv quaternion twist
 	std::vector<Float> remap; // The remapped segment endpoint u-values
 
-	size_t projSteps; // The number of steps for a closest point lookup
-	size_t lutSteps; // The number of sub-segments per spline segment
+	IndexType projSteps; // The number of steps for a closest point lookup
+	IndexType lutSteps; // The number of sub-segments per spline segment
 	Float totalLength;
 
 public:
@@ -679,15 +681,15 @@ public:
 		this->projSteps = old.projSteps;
 		this->lutSteps = old.lutSteps;
 		this->totalLength = old.totalLength;
-		size_t numVerts = size(verts);
+		IndexType numVerts = size(verts);
 		if (numVerts < 2) {
 			segments.clear();
 			return;
 		}
 
-		size_t numSegs = ((numVerts - 1) / 3);
+		IndexType numSegs = ((numVerts - 1) / 3);
 		segments.resize(numSegs);
-		for (size_t i=0; i<numSegs; ++i){
+		for (IndexType i=0; i<numSegs; ++i){
 			std::array<Point*, 4> vv, ss;
 			std::array<Quat*, 4> qq;
 			vv = {&(verts[3*i]), &(verts[3*i + 1]), &(verts[3*i + 2]), &(verts[3*i + 3])};
@@ -702,11 +704,12 @@ public:
 	/// Get the entire point lookup table
 	PointArray getPoints() const {
 		PointArray pLut;
-		resize(pLut, segments.size() * (lutSteps + 1));
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * (lutSteps + 1);
+		resize(pLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getPoints();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				pLut[c++] = pa[j];
 			}
 		}
@@ -716,11 +719,12 @@ public:
 	/// Get the entire scale lookup table
 	PointArray getScales() const {
 		PointArray sLut;
-		resize(sLut, segments.size() * (lutSteps + 1));
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * (lutSteps + 1);
+		resize(sLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getScales();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				sLut[c++] = pa[j];
 			}
 		}
@@ -730,11 +734,12 @@ public:
 	/// Get the entire tangent lookup table
 	VectorArray getTangents() const {
 		VectorArray pLut;
-		resize(pLut, segments.size() * (lutSteps + 1));
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * (lutSteps + 1);
+		resize(pLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getTangents();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				pLut[c++] = pa[j];
 			}
 		}
@@ -744,11 +749,12 @@ public:
 	/// Get the entire normal lookup table
 	VectorArray getNormals() const {
 		VectorArray pLut;
-		resize(pLut, segments.size() * (lutSteps + 1));
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * (lutSteps + 1);
+		resize(pLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getTwistNormals();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				pLut[c++] = pa[j];
 			}
 		}
@@ -758,11 +764,12 @@ public:
 	/// Get the entire binormal lookup table
 	VectorArray getBinormals() const {
 		VectorArray pLut;
-		resize(pLut, segments.size() * (lutSteps + 1));
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * (lutSteps + 1);
+		resize(pLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getTwistBinormals();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				pLut[c++] = pa[j];
 			}
 		}
@@ -772,11 +779,12 @@ public:
 	/// Get the entire unit closest-point-helper lookup table
 	VectorArray getUnits() const {
 		VectorArray pLut;
-		resize(pLut, segments.size() * lutSteps);
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * lutSteps;
+		resize(pLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getUnits();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				pLut[c++] = pa[j];
 			}
 		}
@@ -786,11 +794,12 @@ public:
 	/// Get the entire arclength lookup table
 	std::vector<Float> getSampleLengths() const {
 		std::vector<Float> pLut;
-		resize(pLut, segments.size() * lutSteps);
-		size_t c = 0;
+		IndexType lutCount = static_cast<IndexType>(segments.size()) * lutSteps;
+		resize(pLut, lutCount);
+		IndexType c = 0;
 		for (auto &seg : segments) {
 			auto &pa = seg->getSampleLengths();
-			for (size_t j = 0; j < size(pa); ++j) {
+			for (IndexType j = 0; j < size(pa); ++j) {
 				pLut[c++] = pa[j];
 			}
 		}
@@ -799,14 +808,14 @@ public:
 
 	/// Build the internal segment objects
 	void buildSegments() {
-		size_t numVerts = size(verts);
+		IndexType numVerts = size(verts);
 		if (numVerts < 2) {
 			segments.clear();
 			return;
 		}
-		size_t numSegs = ((numVerts - 1) / 3);
+		IndexType numSegs = ((numVerts - 1) / 3);
 		segments.resize(numSegs);
-		for (size_t i = 0; i < numSegs; ++i) {
+		for (IndexType i = 0; i < numSegs; ++i) {
 			Vector iNorm;
 			if (i == 0) {
 				Vector y = Vector(0.0, 1.0, 0.0);
@@ -814,7 +823,7 @@ public:
 			}
 			else {
 				const auto &pre = segments[i-1];
-				size_t last = pre->getLutSteps() - 1;
+				IndexType last = pre->getLutSteps() - 1;
 				Vector d = pre->getRawNormals()[last];
 				Vector a = pre->getTangents()[last];
 				Vector b = normalized(verts[3 * i + 1] - verts[3 * i]);
@@ -888,7 +897,7 @@ public:
 			std::vector<Float> &res) {
 		// first, build the param matrix
 		std::vector<std::array<Float, 3>> mat;
-		size_t len = rv.size();
+		IndexType len = static_cast<IndexType>(rv.size());
 		if (len <= 1) return;
 		mat.resize(len);
 		res.resize(len);
@@ -901,8 +910,7 @@ public:
 		res[0] = -lv[0] * rv[0] + (1.0 - lv[0]) * (cv[1] - cv[0]);
 
 		// Mid Cases
-		Float rvn = rv[rv.size() - 1];
-		for (size_t i = 1; i < len - 1; ++i) {
+		for (IndexType i = 1; i < len - 1; ++i) {
 			Float A = (cv[i] - cv[i - 1]) / (cv[i + 1] - cv[i - 1]);
 			mat[i][0] = (1.0 - lv[i]) * (1.0 - A);
 			mat[i][1] = -1.0;
@@ -911,7 +919,7 @@ public:
 		}
 
 		// End case
-		size_t e = len - 1;
+		IndexType e = len - 1;
 		mat[e][0] = 1.0 - lv[e];
 		mat[e][1] = -1.0;
 		mat[e][2] = 0.0;
@@ -933,7 +941,7 @@ public:
 			std::vector<Float> &res) {
 		// first, build the param matrix
 		std::vector<std::array<Float, 3>> mat;
-		size_t len = rv.size();
+		IndexType len = static_cast<IndexType>(rv.size());
 		if (len <= 1) return;
 		mat.resize(len);
 		res.resize(len);
@@ -946,7 +954,7 @@ public:
 		res[0] = lv[0] * rv[0];
 
 		// Mid Cases
-		for (size_t i = 1; i < len - 1; ++i) {
+		for (IndexType i = 1; i < len - 1; ++i) {
 			Float A = (cv[i] - cv[i - 1]) / (cv[i + 1] - cv[i - 1]);
 			mat[i][0] = (1.0 - lv[i]) * (1.0 - A);
 			mat[i][1] = -1.0;
@@ -955,7 +963,7 @@ public:
 		}
 
 		// End case
-		size_t e = len - 1;
+		IndexType e = len - 1;
 		mat[e][0] = 1.0 - lv[e];
 		mat[e][1] = -1.0;
 		mat[e][2] = 0.0;
@@ -977,13 +985,13 @@ public:
 		res[0] = res[0] / mat[0][1];
 
 		// Do the middle forward substitutions
-		for (size_t i = 1; i < res.size(); ++i) {
+		for (IndexType i = 1; i < res.size(); ++i) {
 			mat[i][2] = mat[i][2] / (mat[i][1] - mat[i][0] * mat[i - 1][2]);
 			res[i] = (res[i] - mat[i][0] * res[i - 1]) / (mat[i][1] - mat[i][0] * mat[i - 1][2]);
 		}
 
 		// Do the back substitution
-		for (size_t i = res.size() - 1; i-- > 0; ) {
+		for (IndexType i = static_cast<IndexType>(res.size()) - 1; i-- > 0; ) {
 			res[i] = res[i] - mat[i][2] * res[i + 1];
 		}
 	}
@@ -993,7 +1001,7 @@ public:
 		// Return the matrix for the given t-value
 		// map the arc-length t-value through the remap vector
 		Float segT;
-		size_t segIdx;
+		IndexType segIdx;
 
 		linearIndex(t, remap, segT, segIdx);
 
@@ -1010,7 +1018,7 @@ public:
 			PointArray &trans, PointArray &scls, std::vector<Float> &twists, bool twisted) {
 
 		std::vector<Float> segTs;
-		std::vector<size_t> segIdxs;
+		std::vector<IndexType> segIdxs;
 		multiLinearIndexes(params, remap, segTs, segIdxs);
 
 		resize(tans, params.size());
@@ -1020,8 +1028,8 @@ public:
 		resize(scls, params.size());
 		twists.resize(params.size());
 
-		for (size_t i = 0; i < params.size(); ++i) {
-			size_t segIdx = segIdxs[i];
+		for (IndexType i = 0; i < params.size(); ++i) {
+			IndexType segIdx = segIdxs[i];
 			Float segT = segTs[i];
 
 			Vector tan, norm, binorm;
@@ -1042,7 +1050,7 @@ public:
 	void solveTwist() {
 		std::vector<Float> segLens(segments.size() + 1);
 		std::vector<Float> orientVals(segments.size() + 1);
-		for (size_t i=0; i<segments.size(); ++i){
+		for (IndexType i=0; i<segments.size(); ++i){
 			segLens[i+1] = segments[i]->getLength() + segLens[i];
 			//restVals[i+1] = segments[i]->postAngle() + restVals[i];
 			orientVals[i + 1] = -segments[i]->postAngle();
@@ -1057,7 +1065,7 @@ public:
 		std::vector<Float> twistMap;
 		solveTwistParamMatrix(userTwists, segLens, twistLocks, twistMap);
 
-		for (size_t i=0; i<segments.size(); ++i){
+		for (IndexType i=0; i<segments.size(); ++i){
 			segments[i]->applyTwist(oriMap[i]+ twistMap[i], oriMap[i+1]+ twistMap[i+1]);
 		}
 	}

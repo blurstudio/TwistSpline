@@ -23,5 +23,6 @@ outlib = shared_library(
   install_dir : meson.global_source_root() / 'output_Maya' + maya_version,
   include_directories : harm_inc,
   dependencies : maya_dep,
+  name_prefix : '',
   name_suffix : maya_name_suffix,
 )

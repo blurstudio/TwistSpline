@@ -8,219 +8,147 @@ on:
   pull_request:
     branches: [ master ]
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
-  #
-  # Windows
-  #
-  #       __
-  #  |\__/  \
-  #  |       |
-  #  |    __ |
-  #   \__/  \|
-  #
-  #
-  maya-win:
-    runs-on: windows-latest
-
+  compile_plugin:
     strategy:
-      # Without this, all containers stop if any fail
-      # That's bad, we want to know whether it's only one
-      # or if it happens to multiples or all.
+      matrix:
+        maya: [2022, 2023, 2024, 2025]
+        os: [macos-13, macos-latest, ubuntu-latest, windows-latest]
+        include: 
+          # Add the maya update versions here
+          - maya: 2022
+            update: 5
+          - maya: 2023
+            update: 3
+          - maya: 2024
+            update: 2
+          - maya: 2025
+            update: 1
+
+          # OS specific vars
+          - os: macos-latest
+            os_name_u: Mac
+            os_name: mac
+            ext: bundle
+            zip: dmg
+          - os: macos-13
+            os_name_u: Mac
+            os_name: mac
+            ext: bundle
+            zip: dmg
+          - os: windows-latest
+            os_name_u: Windows
+            os_name: windows
+            ext: mll
+            zip: zip
+          - os: ubuntu-latest
+            os_name_u: Linux
+            os_name: linux
+            ext: so
+            zip: tgz
+
+        # cross-compiling is annoying so just fall back to macos-13
+        exclude: 
+          - os: macos-latest
+            maya: 2022
+          - os: macos-latest
+            maya: 2023
+          - os: macos-13
+            maya: 2024
+          - os: macos-13
+            maya: 2025
+
       fail-fast: false
 
-      matrix:
-       include:
-          - maya: "2022"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2022/Autodesk_Maya_2022_5_Update_DEVKIT_Windows.zip"
-          - maya: "2023"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2023/Autodesk_Maya_2023_3_Update_DEVKIT_Windows.zip"
-          - maya: "2024"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Windows.zip"
-          - maya: "2025"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2025/Autodesk_Maya_2025_1_Update_DEVKIT_Windows.zip"
+    runs-on: ${{ matrix.os }}
+
+    env:
+      DEVKIT_URL: https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+${{ matrix.maya }}/Autodesk_Maya_${{ matrix.maya }}_${{ matrix.update }}_Update_DEVKIT_${{ matrix.os_name_u }}.${{ matrix.zip }}
 
     steps:
-      - name: Checkout code
+
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: true
 
-      - name: Install devkit
-        run: |
-          Write-Host "Downloading Devkit: ${{matrix.devkit}}..."
-          Invoke-WebRequest -Uri ${{matrix.devkit}} -OutFile "$pwd/devkit.zip"
-          Write-Host "Extracting devkit.zip.."
-          Expand-Archive -LiteralPath devkit.zip -DestinationPath $pwd
+      - name : Install ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
 
-      - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DMAYA_VERSION="${{matrix.maya}}" -DMAYA_DEVKIT_BASE="$pwd/devkitBase"
-
-      - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-      - name: Repath Artifacts
-        run: |
-          mkdir artifacts/plug-ins
-          Copy-Item "./build/${{env.BUILD_TYPE}}/TwistSpline.mll" -Destination "artifacts/plug-ins"
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name : Install Python
+        uses: actions/setup-python@v5
         with:
-          name: windows-${{matrix.maya}}
-          path: |
-            artifacts/plug-ins/TwistSpline.mll
+          python-version: '3.10'
 
-  # Splitting mac-os into two different steps, as 2024 was made compatible with new arm architecture.
-  maya-macos-x86_64:
-    runs-on: macos-latest
+      - name : install meson
+        run : pip install meson
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-       include:
-          - maya: "2022"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2022/Autodesk_Maya_2022_5_Update_DEVKIT_Mac.dmg"
-          - maya: "2023"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2023/Autodesk_Maya_2023_3_Update_DEVKIT_Mac.dmg"
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Restore Devkit Cache
+        id: cache-devkit
+        uses: actions/cache/restore@v4
         with:
-          submodules: true
+          path: ${{ runner.temp }}/devkit/devkit.${{ matrix.zip }}
+          key: ${{ matrix.os }}-Maya${{ matrix.maya }}-Update${{ matrix.update }}
 
-      - name: Install devkit
+      - name: Download Devkit
+        if: ${{ steps.cache-devkit.outputs.cache-hit != 'true' }}
         run: |
-          curl -o devkit.dmg ${{matrix.devkit}}
-          hdiutil attach devkit.dmg
+          mkdir ${{ runner.temp }}/devkit
+          curl -o ${{ runner.temp }}/devkit/devkit.${{ matrix.zip }} ${{ env.DEVKIT_URL }}
 
-      - uses: maxim-lobanov/setup-xcode@v1
+      - name: Save Devkit Cache
+        if: ${{ steps.cache-devkit.outputs.cache-hit != 'true' }}
+        id: cache-devkit-save
+        uses: actions/cache/save@v4
         with:
-          xcode-version: '14.3.1'
+          path: ${{ runner.temp }}/devkit/devkit.${{ matrix.zip }}
+          key: ${{ matrix.os }}-Maya${{ matrix.maya }}-Update${{ matrix.update }}
 
-      - name: Configure CMake
-        run: |
-          cmake -G Xcode -DCMAKE_OSX_ARCHITECTURES=x86_64 -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DMAYA_VERSION=${{matrix.maya}} -DMAYA_DEVKIT_BASE="/Volumes/devkitBase"
-
-      - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-      - name: Repath Artifacts
-        run: |
-          mkdir -p artifacts/plug-ins
-          cp ./build/${{env.BUILD_TYPE}}/TwistSpline.bundle artifacts/plug-ins
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-${{matrix.maya}}
-          path: |
-            artifacts/plug-ins/TwistSpline.bundle
-
-  # This will be compiled for both x86_64 and arm64 architectures, as arm support has been added starting from Maya 2024.
-  maya-macos-arm64:
-    runs-on: macos-latest
-
-    strategy:
-      fail-fast: false
-
-      matrix:
-       include:
-          - maya: "2024"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Mac.dmg"
-          - maya: "2025"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2025/Autodesk_Maya_2025_1_Update_DEVKIT_Mac.dmg"
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Install devkit
-        run: |
-          curl -o devkit.dmg ${{matrix.devkit}}
-          hdiutil attach devkit.dmg
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '14.3.1'
-
-      - name: Configure CMake
-        run: |
-          cmake -G Xcode -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DMAYA_VERSION=${{matrix.maya}} -DMAYA_DEVKIT_BASE="/Volumes/devkitBase"
-
-      - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-      - name: Repath Artifacts
-        run: |
-          mkdir -p artifacts/plug-ins
-          cp ./build/${{env.BUILD_TYPE}}/TwistSpline.bundle artifacts/plug-ins
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-${{matrix.maya}}
-          path: |
-            artifacts/plug-ins/TwistSpline.bundle
-
-  maya-linux:
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-
-      matrix:
-       include:
-          - maya: "2022"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2022/Autodesk_Maya_2022_5_Update_DEVKIT_Linux.tgz"
-          - maya: "2023"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2023/Autodesk_Maya_2023_3_Update_DEVKIT_Linux.tgz"
-          - maya: "2024"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2024/Autodesk_Maya_2024_2_Update_DEVKIT_Linux.tgz"
-          - maya: "2025"
-            devkit: "https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+2025/Autodesk_Maya_2025_1_Update_DEVKIT_Linux.tgz"
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Install OpenGL libraries
+      - name: Install OpenGL libraries Linux
+        if: ${{ matrix.os_name == 'linux' }}
         run: |
           sudo apt install libglu1-mesa-dev
 
-      - name: Install devkit
+      - name : Unpack Devkit Windows
+        if: ${{ matrix.os_name == 'windows' }}
+        run: Expand-Archive -LiteralPath "${{ runner.temp }}/devkit/devkit.zip" -DestinationPath "${{ runner.temp }}/devkit"
+      - name : Unpack Devkit Mac
+        if: ${{ matrix.os_name == 'mac' }}
+        run: hdiutil attach ${{ runner.temp }}/devkit/devkit.dmg -mountroot ${{ runner.temp }}/devkit
+      - name : Unpack Devkit Linux
+        if: ${{ matrix.os_name == 'linux' }}
+        run: tar xvzf ${{ runner.temp }}/devkit/devkit.tgz -C ${{ runner.temp }}/devkit
+
+      - name: Setup
+        run: >
+          meson
+          setup
+          -Dmaya:maya_version="${{ matrix.maya }}"
+          -Dmaya:maya_devkit_base="${{ runner.temp }}/devkit/devkitBase"
+          --buildtype debugoptimized
+          --vsenv
+          --backend ninja
+          ${{ github.workspace }}/build
+
+      - name: Compile
         run: |
-          curl -o devkit.tgz ${{matrix.devkit}}
-          tar xvzf devkit.tgz
+          meson compile -C ${{ github.workspace }}/build
 
-      - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DMAYA_VERSION="${{matrix.maya}}" -DMAYA_DEVKIT_BASE="$PWD/devkitBase"
-
-      - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-      - name: Repath Artifacts
+      - name: Package
         run: |
-          mkdir -p artifacts/plug-ins
-          cp "./build/TwistSpline.so" "artifacts/plug-ins"
+          mkdir artifacts
+          mkdir artifacts/plug-ins
+          cp ${{ github.workspace }}/build/TwistSpline.${{ matrix.ext }} artifacts/plug-ins
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-${{matrix.maya}}
+          name: ${{ matrix.os_name }}-${{ matrix.maya }}
           path: |
-            artifacts/plug-ins/TwistSpline.so
+            artifacts/plug-ins/TwistSpline.${{ matrix.ext }}
 
 
-#
+
 # Shipping
 #
 #   _________
@@ -233,7 +161,7 @@ jobs:
 #
   upload_release:
     name: Upload release
-    needs: [maya-win, maya-linux, maya-macos-x86_64, maya-macos-arm64]
+    needs: compile_plugin
     runs-on: ubuntu-latest
 
     steps:

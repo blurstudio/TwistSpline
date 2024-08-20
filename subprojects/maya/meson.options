@@ -5,3 +5,12 @@ option(
   description : 'The version of Maya to compile for',
   yield : true,
 )
+
+option(
+  'maya_devkit_base',
+  type : 'string',
+  description : 'Optional path to the maya devkit',
+  yield : true,
+)
+
+

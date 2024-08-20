@@ -1,0 +1,7 @@
+option(
+  'maya_version',
+  type : 'string',
+  value : '2024',
+  description : 'The version of Maya to compile for',
+  yield : true,
+)

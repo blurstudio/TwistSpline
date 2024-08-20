@@ -37,7 +37,7 @@ SOFTWARE.
 #include "twistSpline.h"
 #include "twistSpline_maya.h"
 
-typedef TwistSpline<MPointArray, MPoint, MVectorArray, MVector, std::vector<MQuaternion>, MQuaternion, double> TwistSplineT;
+typedef TwistSpline<MPointArray, MPoint, MVectorArray, MVector, std::vector<MQuaternion>, MQuaternion, double, unsigned> TwistSplineT;
 
 class TwistSplineData : public MPxData {
 public:

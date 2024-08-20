@@ -104,8 +104,6 @@ void TwistSplineGeometryOverride::addUIDrawables(
 	drawManager.beginDrawable(MUIDrawManager::kSelectable);
 
 	if (splineDraw) {
-		MHWRender::DisplayStatus displayStatus =
-			MHWRender::MGeometryUtilities::displayStatus(path);
 		MColor color = MHWRender::MGeometryUtilities::wireframeColor(path);
 		drawManager.setColor(color);
 		drawManager.lineStrip(splinePoints, draw2D);
@@ -115,7 +113,7 @@ void TwistSplineGeometryOverride::addUIDrawables(
 		MPointArray tangents;
 		MVectorArray tans = splineData->getTangents();
 		tangents.setLength(tans.length() * 2);
-		for (size_t i = 0; i < tans.length(); ++i) {
+		for (unsigned i = 0; i < tans.length(); ++i) {
 			MPoint& spi = splinePoints[i];
 			tangents[2 * i] = spi;
 			tangents[(2 * i) + 1] = debugScale * tans[i] + spi;
@@ -126,7 +124,7 @@ void TwistSplineGeometryOverride::addUIDrawables(
 		MPointArray normals;
 		MVectorArray norms = splineData->getNormals();
 		normals.setLength(norms.length() * 2);
-		for (size_t i = 0; i < norms.length(); ++i) {
+		for (unsigned i = 0; i < norms.length(); ++i) {
 			MPoint& spi = splinePoints[i];
 			MVector& nn = norms[i];
 			normals[2 * i] = spi;
@@ -138,7 +136,7 @@ void TwistSplineGeometryOverride::addUIDrawables(
 		MPointArray binormals;
 		MVectorArray binorms = splineData->getBinormals();
 		binormals.setLength(binorms.length() * 2);
-		for (size_t i = 0; i < binorms.length(); ++i) {
+		for (unsigned i = 0; i < binorms.length(); ++i) {
 			MPoint& spi = splinePoints[i];
 			binormals[2 * i] = spi;
 			binormals[(2 * i) + 1] = debugScale * binorms[i] + spi;

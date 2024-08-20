@@ -293,7 +293,11 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		std::vector<double> orientLock;
 
 		MDataHandle hMaxVertices = data.inputValue(aMaxVertices);
-		int maxVertices = hMaxVertices.asInt();
+		int rawMaxVertices = hMaxVertices.asInt();
+		if (rawMaxVertices < 0) {
+			rawMaxVertices = 0;
+		}
+		unsigned maxVertices = static_cast<unsigned>(rawMaxVertices);
 
 		MDataHandle scaleCompH = data.inputValue(aScaleCompensation);
 		double scaleComp = scaleCompH.asDouble();
@@ -419,11 +423,11 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		}
 
 		// Construct the nurbs curve data.
-		size_t degree = 3;
+		unsigned degree = 3;
 		MPointArray cvs = spline->getVerts();
 		std::vector<double> remaps = spline->getRemap();
-		MDoubleArray knots(remaps.size() * 3, 0);
-		unsigned int c = 0;
+		MDoubleArray knots(static_cast<unsigned>(remaps.size()) * 3, 0);
+		unsigned c = 0;
 		for (double p: remaps){
 			// set the value 3 times
 			knots[c++] = p;

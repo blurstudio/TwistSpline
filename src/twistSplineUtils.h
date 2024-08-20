@@ -26,14 +26,14 @@ SOFTWARE.
 
 
 // To make my choice of abstraction work, I have to write wrappers for the template abstractions
-template <typename PointArray>
-inline void resize(PointArray &a, unsigned size) {
+template <typename PointArray, typename IndexType = unsigned>
+inline void resize(PointArray &a, IndexType size) {
 	a.resize(size);
 }
 
-template <typename PointArray>
-inline unsigned size(const PointArray &a) {
-	return a.size();
+template <typename PointArray, typename IndexType = unsigned>
+inline IndexType size(const PointArray &a) {
+	return static_cast<IndexType>(a.size());
 }
 
 template <typename Vector, typename Float = double>

@@ -650,7 +650,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		MArrayDataBuilder builder = outHandle.builder();
 		for (size_t pIdx = 0; pIdx < params.size(); ++pIdx) {
 
-			MDataHandle outH = builder.addElement(pIdx);
+			MDataHandle outH = builder.addElement(static_cast<unsigned>(pIdx));
 			MDataHandle tranH = outH.child(aTranslate);
 			MDataHandle rotH = outH.child(aRotate);
 			MDataHandle sclH = outH.child(aScale);

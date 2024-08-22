@@ -32,7 +32,6 @@ SOFTWARE.
 #include <algorithm>
 #include "twistSplineUtils.h"
 
-
 /**
   * A helper function for quickly finding a single index and segment percentage for an input tValue
   *
@@ -117,12 +116,6 @@ void multiLinearIndexes(const std::vector<Float> &params, const std::vector<Floa
 		segTs[pOrder[i]] = (t - params[segIdx - 1]) / (params[segIdx] - params[segIdx - 1]);
 	}
 }
-
-
-
-
-
-
 
 /**
   * A Spline segment is a 4 vertex cubic bezier spline. Each segment is independent of the others, and
@@ -581,19 +574,18 @@ public:
 	  * linearly interpolating between startAngle and endAngle
 	  */
 	void applyTwist(Float startAngle, Float endAngle){ // inRadians
-        startAngle *= -1;
-        endAngle *= -1;
+		startAngle *= -1;
+		endAngle *= -1;
 
 		resize(tnormals, size(rnormals));
 		resize(tbinormals, size(rbinormals));
 		twistVals.resize(size(rnormals));
 
-
 		Float len = getLength();
 
 		for (IndexType i=0; i <= lutSteps; ++i){
 			Float perc = sampleLengths[i] / len; // parameterize by length
-            Float angle = ((endAngle - startAngle) * perc) + startAngle;
+			Float angle = ((endAngle - startAngle) * perc) + startAngle;
 			twistVals[i] = angle;
 			const Vector &x = rnormals[i];
 			const Vector &y = rbinormals[i];
@@ -612,16 +604,7 @@ public:
 			tbinormals[i] = cross(n, tnormals[i]);
 		}
 	}
-
 };
-
-
-
-
-
-
-
-
 
 // For later:
 // I'll bet I can check the derivatives of the spline
@@ -664,8 +647,6 @@ public:
 	std::vector<Float> getUserTwists() const { return userTwists; }
 	std::vector<Float> getRemap() const { return remap; }
 	Float getTotalLength() const { return totalLength; }
-
-
 
 	/// Copy constructor
 	TwistSpline(TwistSpline const &old){
@@ -884,7 +865,6 @@ public:
 		solveTwist();
 	}
 
-
 	/**
 	  * Solve the locks of a parameter of the spline
 	  * Build a tridiagonal matrix that represents each vertex param as a relation to its neighbor params
@@ -972,7 +952,6 @@ public:
 		// Then pass it to the solver
 		solveTridiagonalMatrix(mat, res);
 	}
-
 
 	/**
 	  * Solve a tridiagonal matrix in linear time
@@ -1062,6 +1041,26 @@ public:
 		std::vector<Float> oriMap;
 		solveTwistParamMatrix(orientVals, segLens, orientLocks, oriMap);
 
+		// Add an euler filter to the ori map.
+		Float tau = 6.283185307179586477;
+		Float pi =  3.141592653589793238;
+		for (size_t i = 1; i < oriMap.size(); ++i){
+			Float diff = oriMap[i] - oriMap[i - 1];
+			Float sign = 1.0;
+			if (diff < 0.0){
+				diff *= -1.0;
+				sign = -1.0;
+			}
+
+			int count = 0;
+			for (; count < 10; ++count){
+				if (diff < pi){
+					break;
+				}
+				diff -= tau;
+			}
+			oriMap[i] -= count * sign * tau;
+		}
 		std::vector<Float> twistMap;
 		solveTwistParamMatrix(userTwists, segLens, twistLocks, twistMap);
 

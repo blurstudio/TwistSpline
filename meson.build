@@ -14,14 +14,18 @@ source_files = [
     'src/twistMultiTangentNode.cpp',
 ]
 
-harm_inc = include_directories(['src'])
+latest_tag = run_command('git', 'describe', '--tags', '--abbrev=0').stdout().strip()
+if latest_tag == ''
+  latest_tag = 'NOTAG'
+endif
+add_project_arguments('-DVERSION_STRING="' + latest_tag + '"', language: 'cpp')
 
 outlib = shared_library(
   meson.project_name(),
   source_files,
   install: true,
   install_dir : meson.global_source_root() / 'output_Maya' + maya_version,
-  include_directories : harm_inc,
+  include_directories : include_directories(['src']),
   dependencies : maya_dep,
   name_prefix : '',
   name_suffix : maya_name_suffix,

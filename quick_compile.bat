@@ -10,7 +10,7 @@ SET BUILDTYPE=debug
 SET BUILDDIR=mayabuild_%BUILDTYPE%_%MAYA_VERSION%_%BACKEND%
 
 if not exist %BUILDDIR%\ (
-    meson setup -Dmaya:maya_version=%MAYA_VERSION% --buildtype %BUILDTYPE% --vsenv %BUILDDIR% --backend %BACKEND%
+    meson setup %BUILDDIR% -Dmaya:maya_version=%MAYA_VERSION% --buildtype %BUILDTYPE% --vsenv --backend %BACKEND%
 )
 
 if exist %BUILDDIR%\ (

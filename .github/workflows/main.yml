@@ -1,3 +1,4 @@
+
 name: build
 
 on:
@@ -7,6 +8,13 @@ on:
       - v*
   pull_request:
     branches: [ master ]
+
+# matrix:
+#   maya: [2024]
+#   os: [macos-latest, ubuntu-latest, windows-latest]
+#   include: 
+#     - maya: 2024
+#       update: 2
 
 jobs:
   compile_plugin:
@@ -25,28 +33,6 @@ jobs:
           - maya: 2025
             update: 1
 
-          # OS specific vars
-          - os: macos-latest
-            os_name_u: Mac
-            os_name: mac
-            ext: bundle
-            zip: dmg
-          - os: macos-13
-            os_name_u: Mac
-            os_name: mac
-            ext: bundle
-            zip: dmg
-          - os: windows-latest
-            os_name_u: Windows
-            os_name: windows
-            ext: mll
-            zip: zip
-          - os: ubuntu-latest
-            os_name_u: Linux
-            os_name: linux
-            ext: so
-            zip: tgz
-
         # cross-compiling is annoying so just fall back to macos-13
         exclude: 
           - os: macos-latest
@@ -61,156 +47,50 @@ jobs:
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
-
-    env:
-      DEVKIT_URL: https://autodesk-adn-transfer.s3-us-west-2.amazonaws.com/ADN+Extranet/M%26E/Maya/devkit+${{ matrix.maya }}/Autodesk_Maya_${{ matrix.maya }}_${{ matrix.update }}_Update_DEVKIT_${{ matrix.os_name_u }}.${{ matrix.zip }}
-
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Get Maya Devkit
+        id: get-devkit
+        uses: blurstudio/mayaModuleActions/getMayaDevkit@v1
         with:
-          submodules: true
-          fetch-depth: 0
+          maya: ${{ matrix.maya }}
+          update: ${{ matrix.update }}
 
-      - name : Install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v5
-
-      - name : Install Python
-        uses: actions/setup-python@v5
+      - name: Build
+        uses: blurstudio/mayaModuleActions/mesonBuild@v1
         with:
-          python-version: '3.10'
-
-      - name : install meson
-        run : pip install meson
-
-      - name: Restore Devkit Cache
-        id: cache-devkit
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/devkit/devkit.${{ matrix.zip }}
-          key: ${{ matrix.os }}-Maya${{ matrix.maya }}-Update${{ matrix.update }}
-
-      - name: Download Devkit
-        if: ${{ steps.cache-devkit.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir ${{ runner.temp }}/devkit
-          curl -o ${{ runner.temp }}/devkit/devkit.${{ matrix.zip }} ${{ env.DEVKIT_URL }}
-
-      - name: Save Devkit Cache
-        if: ${{ steps.cache-devkit.outputs.cache-hit != 'true' }}
-        id: cache-devkit-save
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/devkit/devkit.${{ matrix.zip }}
-          key: ${{ matrix.os }}-Maya${{ matrix.maya }}-Update${{ matrix.update }}
-
-      - name: Install OpenGL libraries Linux
-        if: ${{ matrix.os_name == 'linux' }}
-        run: |
-          sudo apt install libglu1-mesa-dev
-
-      - name : Unpack Devkit Windows
-        if: ${{ matrix.os_name == 'windows' }}
-        run: Expand-Archive -LiteralPath "${{ runner.temp }}/devkit/devkit.zip" -DestinationPath "${{ runner.temp }}/devkit"
-      - name : Unpack Devkit Mac
-        if: ${{ matrix.os_name == 'mac' }}
-        run: hdiutil attach ${{ runner.temp }}/devkit/devkit.dmg -mountroot ${{ runner.temp }}/devkit
-      - name : Unpack Devkit Linux
-        if: ${{ matrix.os_name == 'linux' }}
-        run: tar xvzf ${{ runner.temp }}/devkit/devkit.tgz -C ${{ runner.temp }}/devkit
-
-      - name: Setup
-        run: >
-          meson
-          setup
-          -Dmaya:maya_version="${{ matrix.maya }}"
-          -Dmaya:maya_devkit_base="${{ runner.temp }}/devkit/devkitBase"
-          --buildtype debugoptimized
-          --vsenv
-          --backend ninja
-          ${{ github.workspace }}/build
-
-      - name: Compile
-        run: |
-          meson compile -C ${{ github.workspace }}/build
-
-      - name: Package
-        run: |
-          mkdir artifacts
-          mkdir artifacts/plug-ins
-          cp ${{ github.workspace }}/build/TwistSpline.${{ matrix.ext }} artifacts/plug-ins
+          setup-args: >
+            -Dmaya:maya_version=${{ matrix.maya }}
+            -Dmaya:maya_devkit_base=${{ steps.get-devkit.outputs.devkit-path }}
+            --buildtype release
+            --backend ninja
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os_name }}-${{ matrix.maya }}
-          path: |
-            artifacts/plug-ins/TwistSpline.${{ matrix.ext }}
+          name: ${{ runner.os }}-${{ matrix.maya }}-plugin
+          path: build/*.${{ steps.get-devkit.outputs.plugin-ext }}
+          if-no-files-found: error
 
-
-
-# Shipping
-#
-#   _________
-#  |\ _ _ _ _\
-#  | \________\
-#  | |        |
-#  | |        |
-#   \|________|
-#
-#
   upload_release:
     name: Upload release
     needs: compile_plugin
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - run: git fetch --tags origin
+      - name: 'Get Previous tag'
+        id: previoustag
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
         with:
-          fetch-depth: 0
+          fallback: 0.0.1
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-
-        # Omitting name: means "download all artifacts"
-        # Destination directory structure:
-        # ~/modules
-        #   /TwistSpline
-        #    /<os_name>-<maya_major_version>
-        #     /icons
-        #     /plug-ins
-        #       TwistSpline.mll
-        #     /scripts
-        #       *.py
-        #       *.mel
-        #   /TwistSpline.mod
-
-        with:
-          path: modules/TwistSpline
-
-      - name: Get Latest Tag
-        run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "NOTAG")
-          echo "LatestTag: ${LATEST_TAG}"
-          echo "RELEASE_VERSION=${LATEST_TAG}" >> $GITHUB_ENV
-
-      - name: Create distribution
-        run: |
-          sed "s/DEVELOP/${{env.RELEASE_VERSION}}/" TwistSpline.mod > modules/TwistSpline.mod
-          mkdir -p modules/TwistSpline/scripts
-          cp -r ./scripts modules/TwistSpline
-          mkdir -p modules/TwistSpline/icons
-          cp ./icons/*.png modules/TwistSpline/icons
-          cp ./icons/*.xpm modules/TwistSpline/icons
-          zip -r TwistSpline-${{env.RELEASE_VERSION}}.zip modules/
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: TwistSpline-module
-          path: TwistSpline-${{env.RELEASE_VERSION}}.zip
+      - name: Package
+        uses: blurstudio/mayaModuleActions/packageMayaModule@v1
+        with: 
+          module-name: TwistSpline
+          folder-list: scripts icons
+          version: ${{ steps.previoustag.outputs.tag }}
 
       - name: Upload distribution
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}

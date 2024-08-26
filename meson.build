@@ -4,7 +4,7 @@ maya_dep = dependency('maya')
 maya_name_suffix = maya_dep.get_variable('name_suffix')
 maya_version = maya_dep.get_variable('maya_version')
 
-source_files = [
+source_files = files([
     'src/pluginMain.cpp',
     'src/drawOverride.cpp',
     'src/twistSplineData.cpp',
@@ -12,7 +12,7 @@ source_files = [
     'src/riderConstraint.cpp',
     'src/twistTangentNode.cpp',
     'src/twistMultiTangentNode.cpp',
-]
+])
 
 latest_tag = run_command('git', 'describe', '--tags', '--abbrev=0').stdout().strip()
 if latest_tag == ''

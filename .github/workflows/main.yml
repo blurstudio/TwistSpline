@@ -49,6 +49,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - run: git fetch --tags origin
+
       - name: Get Maya Devkit
         id: get-devkit
         uses: blurstudio/mayaModuleActions/getMayaDevkit@v1

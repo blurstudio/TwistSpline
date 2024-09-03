@@ -4,21 +4,31 @@ maya_dep = dependency('maya')
 maya_name_suffix = maya_dep.get_variable('name_suffix')
 maya_version = maya_dep.get_variable('maya_version')
 
-source_files = files([
-    'src/pluginMain.cpp',
-    'src/drawOverride.cpp',
-    'src/twistSplineData.cpp',
-    'src/twistSplineNode.cpp',
-    'src/riderConstraint.cpp',
-    'src/twistTangentNode.cpp',
-    'src/twistMultiTangentNode.cpp',
-])
+source_files = [
+  'src/pluginMain.cpp',
+  'src/drawOverride.cpp',
+  'src/twistSplineData.cpp',
+  'src/twistSplineNode.cpp',
+  'src/riderConstraint.cpp',
+  'src/twistTangentNode.cpp',
+  'src/twistMultiTangentNode.cpp',
+]
 
-latest_tag = run_command('git', 'describe', '--tags', '--abbrev=0').stdout().strip()
-if latest_tag == ''
-  latest_tag = 'NOTAG'
+# If a user-built version file exists, then just use that
+# Otherwise grab the latest tag from git
+fs = import('fs')
+if fs.is_file('src/version.h')
+  message('Using existing version.h')
+else
+  git = find_program('git', native: true, required: true)
+  version_h = vcs_tag(
+    command: [git, 'describe', '--tags', '--match', 'v[0-9]*', '--dirty=+'],
+    fallback: 'v0.0.1',
+    input: 'src/version.h.in',
+    output: 'version.h',
+  )
+  source_files = source_files + version_h
 endif
-add_project_arguments('-DVERSION_STRING="' + latest_tag + '"', language: 'cpp')
 
 outlib = shared_library(
   meson.project_name(),

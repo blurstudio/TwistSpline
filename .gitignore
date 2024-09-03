@@ -57,3 +57,6 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Auto-created version files
+version.h

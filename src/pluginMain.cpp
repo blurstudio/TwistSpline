@@ -29,6 +29,7 @@ SOFTWARE.
 #include "twistMultiTangentNode.h"
 #include "drawOverride.h"
 #include <maya/MFnPlugin.h>
+#include "version.h"
 
 MStatus initializePlugin( MObject obj ) {
 	MStatus   status;

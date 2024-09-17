@@ -32,8 +32,9 @@ void* TwistSplineData::creator(){
     return new TwistSplineData;
 }
 
-TwistSplineData::TwistSplineData() {
-	_twistSpline = new TwistSplineT();
+TwistSplineData::TwistSplineData()
+	: _twistSpline(std::make_unique<TwistSplineT>())
+{
 }
 
 TwistSplineData::~TwistSplineData() {
@@ -43,7 +44,7 @@ void TwistSplineData::copy(const MPxData& other) {
 	if (other.typeId() == TwistSplineData::id) {
 		const TwistSplineData* otherData = (const TwistSplineData*) & other;
 		const TwistSplineT * x = otherData->getSpline();
-		_twistSpline = new TwistSplineT(*x);
+		_twistSpline = std::make_unique<TwistSplineT>(*otherData->getSpline());
 	}
 	else {
 		//  we need to convert to the other type based on its iff Tag
@@ -53,11 +54,11 @@ void TwistSplineData::copy(const MPxData& other) {
 }
 
 const TwistSplineT* TwistSplineData::getSpline() const {
-    return _twistSpline;
+    return _twistSpline.get();
 }
 
 TwistSplineT* TwistSplineData::getSpline() {
-    return _twistSpline;
+    return _twistSpline.get();
 }
 
 MTypeId TwistSplineData::typeId() const {

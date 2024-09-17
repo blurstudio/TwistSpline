@@ -63,6 +63,6 @@ public:
     static void* creator();
 
 private:
-    TwistSplineT* _twistSpline;
+    std::unique_ptr<TwistSplineT> _twistSpline;
 };
 

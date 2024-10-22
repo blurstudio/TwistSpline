@@ -49,7 +49,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - run: git fetch --tags origin
+      - run: git fetch --force --tags origin
 
       - name: Get Maya Devkit
         id: get-devkit
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: git fetch --tags origin
+      - run: git fetch --force --tags origin
       - name: 'Get Previous tag'
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"

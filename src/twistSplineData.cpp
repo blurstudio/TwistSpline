@@ -43,7 +43,6 @@ TwistSplineData::~TwistSplineData() {
 void TwistSplineData::copy(const MPxData& other) {
 	if (other.typeId() == TwistSplineData::id) {
 		const TwistSplineData* otherData = (const TwistSplineData*) & other;
-		const TwistSplineT * x = otherData->getSpline();
 		_twistSpline = std::make_unique<TwistSplineT>(*otherData->getSpline());
 	}
 	else {

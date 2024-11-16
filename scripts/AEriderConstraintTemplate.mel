@@ -4,10 +4,14 @@ global proc AEriderConstraintTemplate( string $nodeName ) {
     editorTemplate -beginScrollLayout;
 
     editorTemplate -beginLayout "Global Attributes" -collapse 0;
+        editorTemplate -label "Inverse Forward" -addControl "inverseForward";
+        editorTemplate -label "Inverse Up" -addControl "inverseUp";
+        editorTemplate -label "Forward Axis" -addControl "forwardAxis";
+        editorTemplate -label "Up Axis" -addControl "upAxis";
+        editorTemplate -label "Rotate Order" -addControl "rotateOrder";
         editorTemplate -label "Global Offset" -addControl "globalOffset";
         editorTemplate -label "Global Spread" -addControl "globalSpread";
         editorTemplate -label "Scale Compensation" -addControl "scaleCompensation";
-        editorTemplate -label "Rotate Order" -addControl "rotateOrder";
         editorTemplate -label "Use Cycle" -addControl "useCycle";
         editorTemplate -label "Normalize" -addControl "normalize";
         editorTemplate -label "Norm Value" -addControl "normValue";

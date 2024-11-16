@@ -54,10 +54,18 @@ SOFTWARE.
 #define ROTATE_ORDER_YXZ		4
 #define ROTATE_ORDER_ZYX		5
 
+#define X_AXIS		0
+#define Y_AXIS		1
+#define Z_AXIS		2
+
 #define CHECKSTAT(m) if (!status) {status.perror(m); return status;};
 
 MTypeId		riderConstraint::id(0x001226FC);
 
+MObject		riderConstraint::aForwardAxis;
+MObject		riderConstraint::aForwardAxisInverse;
+MObject		riderConstraint::aUpAxis;
+MObject		riderConstraint::aUpAxisInverse;
 MObject		riderConstraint::aRotateOrder;
 MObject		riderConstraint::aGlobalOffset;
 MObject		riderConstraint::aGlobalSpread;
@@ -102,6 +110,7 @@ MObject		riderConstraint::aOutputs;
 	MObject		riderConstraint::aScaleX;
 	MObject		riderConstraint::aScaleY;
 	MObject		riderConstraint::aScaleZ;
+	MObject		riderConstraint::aOutputMatrix;
 
 MStatus riderConstraint::initialize() {
 	MStatus status;
@@ -112,7 +121,47 @@ MStatus riderConstraint::initialize() {
 	MFnEnumAttribute eAttr;
 	MFnCompoundAttribute cAttr;
 
+	aForwardAxisInverse = nAttr.create("inverseForward", "invfwd", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aForwardAxisInverse");
+	nAttr.setKeyable(false);
+	nAttr.setChannelBox(true);
+	status = addAttribute(aForwardAxisInverse);
+	CHECKSTAT("aForwardAxisInverse");
+
+	aUpAxisInverse = nAttr.create("inverseUp", "invup", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aUpAxisInverse");
+	nAttr.setKeyable(false);
+	nAttr.setChannelBox(true);
+	status = addAttribute(aUpAxisInverse);
+	CHECKSTAT("aUpAxisInverse");
+
 	// Single inputs
+	aForwardAxis = eAttr.create("forwardAxis", "frax", X_AXIS, &status);
+	CHECKSTAT("aForwardAxis");
+	eAttr.setKeyable(false);
+	eAttr.setChannelBox(true);
+	status = eAttr.addField("X", X_AXIS);
+	CHECKSTAT("aForwardAxis");
+	status = eAttr.addField("Y", Y_AXIS);
+	CHECKSTAT("aForwardAxis");
+	status = eAttr.addField("Z", Z_AXIS);
+	CHECKSTAT("aForwardAxis");
+	status = addAttribute(aForwardAxis);
+	CHECKSTAT("aForwardAxis");
+
+	aUpAxis = eAttr.create("upAxis", "upax", Y_AXIS, &status);
+	CHECKSTAT("aUpAxis");
+	eAttr.setKeyable(false);
+	eAttr.setChannelBox(true);
+	status = eAttr.addField("X", X_AXIS);
+	CHECKSTAT("aUpAxis");
+	status = eAttr.addField("Y", Y_AXIS);
+	CHECKSTAT("aUpAxis");
+	status = eAttr.addField("Z", Z_AXIS);
+	CHECKSTAT("aUpAxis");
+	status = addAttribute(aUpAxis);
+	CHECKSTAT("aUpAxis");
+
 	aRotateOrder = eAttr.create("rotateOrder", "ro", ROTATE_ORDER_XYZ, &status);
 	CHECKSTAT("aRotateOrder");
 	eAttr.setKeyable(true);
@@ -333,11 +382,16 @@ MStatus riderConstraint::initialize() {
 	nAttr.setWritable(false);
 	nAttr.setStorable(false);
 
+	aOutputMatrix = mAttr.create("outputMatrix", "omat", MFnMatrixAttribute::kDouble, &status);
+	CHECKSTAT("aParentInverseMatrix");
+	mAttr.setHidden(true);
+
 	aOutputs = cAttr.create("outputs", "out", &status);
 	CHECKSTAT("aOutputs");
 	cAttr.setHidden(true);
 	cAttr.setArray(true);
 	cAttr.setUsesArrayDataBuilder(true);
+	cAttr.addChild(aOutputMatrix);
 	cAttr.addChild(aTranslate);
 	cAttr.addChild(aRotate);
 	cAttr.addChild(aScale);
@@ -354,11 +408,13 @@ MStatus riderConstraint::initialize() {
 		&aInputSplines, &aSpline, &aSplineLength, &aEndParam, &aWeight, &aParams, &aParam,
 		&aParentInverseMatrix, &aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize,
 		&aNormValue, &aUseMin, &aMinParam, &aUseMax, &aMaxParam,
-		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam, &aScaleCompensation
+		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam, &aScaleCompensation,
+		&aForwardAxis, &aForwardAxisInverse,
+		&aUpAxis, &aUpAxisInverse
 	};
 
 	std::vector<MObject *> oobjs = {
-		&aOutputs, &aTranslate, &aRotate, &aScale, &aTranslateX, &aRotateX, &aScaleX,
+		&aOutputs, &aOutputMatrix, &aTranslate, &aRotate, &aScale, &aTranslateX, &aRotateX, &aScaleX,
 		&aTranslateY, &aRotateY, &aScaleY, &aTranslateZ, &aRotateZ, &aScaleZ
 	};
 
@@ -373,6 +429,7 @@ MStatus riderConstraint::initialize() {
 
 MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 	if (plug == aOutputs ||
+		plug == aOutputMatrix ||
 		plug == aScale || plug == aScaleX || plug == aScaleY || plug == aScaleZ ||
 		plug == aRotate || plug == aRotateX || plug == aRotateY || plug == aRotateZ ||
 		plug == aTranslate || plug == aTranslateX || plug == aTranslateY || plug == aTranslateZ
@@ -494,6 +551,11 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			inPAH.next();
 		}
 
+		MDataHandle fwdAxisH = data.inputValue(aForwardAxis);
+		MDataHandle fwdAxisInvH = data.inputValue(aForwardAxisInverse);
+		MDataHandle upAxisH = data.inputValue(aUpAxis);
+		MDataHandle upAxisInvH = data.inputValue(aUpAxisInverse);
+
 		// Deal with cycling and the global offset
 		MDataHandle gOffsetH = data.inputValue(aGlobalOffset);
 		MDataHandle gSpreadH = data.inputValue(aGlobalSpread);
@@ -507,6 +569,13 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 
 		MDataHandle normalizeH = data.inputValue(aNormalize);
 		MDataHandle normValueH = data.inputValue(aNormValue);
+
+		// Get the forward and up axes so the rotation matrix can be reshuffled to match
+		// them
+		short fwdAxis = fwdAxisH.asShort();
+		bool fwdAxisInv = fwdAxisInvH.asBool();
+		short upAxis = upAxisH.asShort();
+		bool upAxisInv = upAxisInvH.asBool();
 
 		// Both the normalized value and the globalSpread have to be scaled up
 		// when the global rig scales.
@@ -651,6 +720,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		for (size_t pIdx = 0; pIdx < params.size(); ++pIdx) {
 
 			MDataHandle outH = builder.addElement(static_cast<unsigned>(pIdx));
+			MDataHandle matH = outH.child(aOutputMatrix);
 			MDataHandle tranH = outH.child(aTranslate);
 			MDataHandle rotH = outH.child(aRotate);
 			MDataHandle sclH = outH.child(aScale);
@@ -660,12 +730,41 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			MMatrix qmat = oquats[pIdx].asMatrix() * invPar;
 			MPoint &scale = oscales[pIdx];
 
-			// Ugh, the only way to convert to quat to euler *with a given rot order*
-			// is expanding to matrix and decomposing
-			MEulerRotation meu = MEulerRotation::decompose(qmat, (MEulerRotation::RotationOrder)order);
+			// Certain API classes expose rotations orders from 0 to 5, while some
+			// other from 1 to 6. The MTransformationMatrix one uses the latter, so
+			// the constants have to be remapped to it
+			MTransformationMatrix::RotationOrder rotOrder;
+			switch (order) {
+				case ROTATE_ORDER_XYZ:
+					rotOrder = MTransformationMatrix::kXYZ; break;
+				case ROTATE_ORDER_YZX:
+					rotOrder = MTransformationMatrix::kYZX; break;
+				case ROTATE_ORDER_ZXY:
+					rotOrder = MTransformationMatrix::kZXY; break;
+				case ROTATE_ORDER_XZY:
+					rotOrder = MTransformationMatrix::kXZY; break;
+				case ROTATE_ORDER_YXZ:
+					rotOrder = MTransformationMatrix::kYXZ; break;
+				case ROTATE_ORDER_ZYX:
+					rotOrder = MTransformationMatrix::kZYX; break;
+				default:
+					rotOrder = MTransformationMatrix::kInvalid; break;
+			}
 
+			// Compose the output matrix
+			MTransformationMatrix tfmat =
+				riderConstraint::recomputeRotationMatrix(
+					qmat, fwdAxis, upAxis, fwdAxisInv, upAxisInv, rotOrder);
+			tfmat.setTranslation(tran, MSpace::kWorld);
+			double rot[3];
+			tfmat.getRotation(rot, rotOrder);
+			double dscale[4];
+			scale.get(dscale);
+			tfmat.setScale(dscale, MSpace::kWorld);
+
+			matH.setMMatrix(tfmat.asMatrix());
 			tranH.set3Double(tran[0], tran[1], tran[2]);
-			rotH.set3Double(meu.x, meu.y, meu.z);
+			rotH.set3Double(rot[0], rot[1], rot[2]);
 			sclH.set3Double(scale[0], scale[1], scale[2]);
 		}
 		outHandle.set(builder);
@@ -682,4 +781,122 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 void riderConstraint::postConstructor() {
 	MFnDependencyNode nodeFn(thisMObject());
 	nodeFn.setIcon("riderConstraint.png");
+}
+
+MTransformationMatrix riderConstraint::recomputeRotationMatrix(
+		const MMatrix& matrix,
+		const short& forwardAxisIdx,
+		const short& upAxisIdx,
+		const bool& inverseForward,
+		const bool& inverseUp,
+		const MTransformationMatrix::RotationOrder& order) {
+	/*
+		Populate different permutation and inverse matrices depending on the
+		axes chosen. It's easier to deal with split inversion of forward and
+		up vectors from a rotation (radians) perspective, as each one will just
+		require one axis to rotate by PI. The resulting matrix will be composed
+		as following, and all rotations will be reordered to the given order:
+
+			inversion matrix * permutation matrix * input matrix
+	*/
+
+	if (forwardAxisIdx == upAxisIdx) {
+		MGlobal::displayWarning("Forward and up axis cannot be the same!");
+	}
+
+	MTransformationMatrix result;
+	MMatrix permutation;
+	MTransformationMatrix inversion;
+	double rotations[3] = {0.0, 0.0, 0.0};
+
+	// -- Defaults (X forward, Y up)
+	if (forwardAxisIdx == X_AXIS && upAxisIdx == Y_AXIS) {
+		rotations[1] = inverseForward ? M_PI : 0.0;
+		rotations[0] = inverseUp ? M_PI : 0.0;
+	}
+
+	// Create a permutation matrix and only modify the axes needed for a specific
+	// operation
+	// -- X forward
+	if (forwardAxisIdx == X_AXIS && upAxisIdx == Z_AXIS) {
+		/*
+			X forward, Z up
+			[1,  0,  0,  0]
+			[0,  0, -1,  0]
+			[0,  1,  0,  0]
+			[0,  0,  0,  1]
+		*/
+		permutation[1][1] = 0.0; permutation[1][2] = -1.0;
+		permutation[2][1] = 1.0; permutation[2][2] = 0.0;
+		rotations[Z_AXIS] = inverseForward ? M_PI : 0.0;
+		rotations[X_AXIS] = inverseUp ? M_PI : 0.0;
+	}
+
+	// -- Y forward
+	if (forwardAxisIdx == Y_AXIS && upAxisIdx == X_AXIS) {
+		/*
+			Y forward, X up
+			[0,  1,  0,  0]
+			[1,  0,  0,  0]
+			[0,  0, -1,  0]
+			[0,  0,  0,  1]
+		*/
+		permutation[0][0] = 0.0; permutation[0][1] = 1.0;
+		permutation[1][0] = 1.0; permutation[1][1] = 0.0;
+		permutation[2][2] = -1.0;
+		rotations[X_AXIS] = inverseForward ? M_PI : 0.0;
+		rotations[Y_AXIS] = inverseUp ? M_PI : 0.0;
+	}
+
+	if (forwardAxisIdx == Y_AXIS && upAxisIdx == Z_AXIS) {
+		/*
+			Y forward, Z up
+			[0,  0,  1,  0]
+			[1,  0,  0,  0]
+			[0,  1,  0,  0]
+			[0,  0,  0,  1]
+		*/
+		permutation[0][0] = 0.0; permutation[0][2] = 1.0;
+		permutation[1][0] = 1.0; permutation[1][1] = 0.0;
+		permutation[2][1] = 1.0; permutation[2][2] = 0.0;
+		rotations[Z_AXIS] = inverseForward ? M_PI : 0.0;
+		rotations[Y_AXIS] = inverseUp ? M_PI : 0.0;
+	}
+
+	// -- Z forward
+	if (forwardAxisIdx == Z_AXIS && upAxisIdx == X_AXIS) {
+		/*
+			Z forward, X up
+			[0,  1,  0,  0]
+			[0,  0,  1,  0]
+			[1,  0,  0,  0]
+			[0,  0,  0,  1]
+		*/
+		permutation[0][0] = 0.0; permutation[0][1] = 1.0;
+		permutation[1][1] = 0.0; permutation[1][2] = 1.0;
+		permutation[2][0] = 1.0; permutation[2][2] = 0.0;
+		rotations[X_AXIS] = inverseForward ? M_PI : 0.0;
+		rotations[Z_AXIS] = inverseUp ? M_PI : 0.0;
+	}
+
+	if (forwardAxisIdx == Z_AXIS && upAxisIdx == Y_AXIS) {
+		/*
+			Z forward, Y up
+			[0,  0, -1,  1]
+			[0,  1,  0,  1]
+			[1,  0,  0,  1]
+			[0,  0,  0,  1]
+		*/
+		permutation[0][0] = 0.0; permutation[0][2] = -1.0;
+		permutation[2][0] = 1.0; permutation[2][2] = 0.0;
+		rotations[Y_AXIS] = inverseForward ? M_PI : 0.0;
+		rotations[Z_AXIS] = inverseUp ? M_PI : 0.0;
+	}
+
+	inversion.setRotation(rotations, MTransformationMatrix::RotationOrder::kXYZ);
+
+	result = inversion.asMatrix() * permutation * matrix;
+	result.reorderRotation(order);
+
+	return result;
 }

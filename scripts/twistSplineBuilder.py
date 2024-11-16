@@ -761,6 +761,7 @@ def buildRiders(pfx, spline, master, numJoints, closed=False):
         )
         cmds.connectAttr(f"{cnst}.outputs[{i}].rotate", f"{jPars[i]}.rotate")
         cmds.connectAttr(f"{cnst}.outputs[{i}].scale", f"{jPars[i]}.scale")
+        cmds.connectAttr(f"{cnst}.rotateOrder", f"{jPars[i]}.rotateOrder")
 
     return jPars, joints, jointsGrp, cnst
 

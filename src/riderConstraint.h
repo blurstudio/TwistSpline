@@ -23,8 +23,10 @@ SOFTWARE.
 */
 
 #pragma once
+#include <maya/MGlobal.h>
 #include <maya/MPxNode.h>
 #include <maya/MFnDependencyNode.h>
+#include "math.h"
 
 class riderConstraint : public MPxNode {
 public:
@@ -38,6 +40,10 @@ public:
 
 public:
 	// inputs
+	static MObject aForwardAxis;
+	static MObject aForwardAxisInverse;
+	static MObject aUpAxis;
+	static MObject aUpAxisInverse;
 	static MObject aRotateOrder;
 	static MObject aGlobalOffset;
 	static MObject aGlobalSpread;
@@ -69,7 +75,7 @@ public:
 
 	// output
 	static MObject aOutputs;
-		static MObject aOutMat;
+		static MObject aOutputMatrix;
 		static MObject aTranslate;
 		static MObject aTranslateX;
 		static MObject aTranslateY;
@@ -84,5 +90,12 @@ public:
 		static MObject aScaleZ;
 
 	static MTypeId id;
-};
 
+	static MTransformationMatrix recomputeRotationMatrix(
+		const MMatrix& matrix,
+		const short& forwardAxisIdx,
+		const short& upAxisIdx,
+		const bool& inverseForward,
+		const bool& inverseUp,
+		const MTransformationMatrix::RotationOrder& order);
+};

@@ -679,3 +679,8 @@ MStatus TwistMultiTangentNode::compute(const MPlug &plug, MDataBlock &data)
 
     return MS::kSuccess;
 }
+
+void TwistMultiTangentNode::postConstructor() {
+	MFnDependencyNode nodeFn(thisMObject());
+	nodeFn.setIcon("twistMultiTangent.png");
+}

@@ -27,16 +27,18 @@ SOFTWARE.
 #include <maya/MStatus.h>
 #include <maya/MObject.h>
 #include <maya/MPxNode.h>
-#include <maya/MTypeId.h> 
- 
+#include <maya/MTypeId.h>
+#include <maya/MFnDependencyNode.h>
+
 class TwistMultiTangentNode : public MPxNode {
 public:
 	TwistMultiTangentNode();
-	virtual	~TwistMultiTangentNode(); 
+	virtual	~TwistMultiTangentNode();
 
 	virtual	MStatus	compute( const MPlug& plug, MDataBlock& data );
 	static	void*	creator();
 	static	MStatus	initialize();
+	void postConstructor() override;
 
 public:
 	// inputs
@@ -79,5 +81,3 @@ public:
 
 	static MTypeId	id;
 };
-
-

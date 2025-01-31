@@ -33,11 +33,11 @@ SOFTWARE.
 class TwistTangentNode : public MPxNode {
 public:
 	TwistTangentNode();
-	virtual	~TwistTangentNode();
+	virtual ~TwistTangentNode();
 
-	virtual	MStatus	compute( const MPlug& plug, MDataBlock& data );
-	static	void*	creator();
-	static	MStatus	initialize();
+	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
+	static  void*   creator();
+	static  MStatus initialize();
 	void postConstructor() override;
 
 public:
@@ -80,7 +80,7 @@ public:
 	static MObject aBackpoint;
 	static MObject aEndpoint;
 
-	static MTypeId	id;
+	static MTypeId id;
 };
 
 

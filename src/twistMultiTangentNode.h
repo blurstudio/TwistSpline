@@ -32,52 +32,53 @@ SOFTWARE.
 class TwistMultiTangentNode : public MPxNode {
 public:
 	TwistMultiTangentNode();
-	virtual	~TwistMultiTangentNode(); 
+	virtual ~TwistMultiTangentNode(); 
 
-	virtual	MStatus	compute( const MPlug& plug, MDataBlock& data );
-	static	void*	creator();
-	static	MStatus	initialize();
+	virtual MStatus compute( const MPlug& plug, MDataBlock& data );
+	static  void*   creator();
+	static  MStatus initialize();
 
 public:
 	// inputs
-    static MObject aVertMat;
-    static MObject aInTanMat;
-    static MObject aOutTanMat;
-    static MObject aInTanWeight;
-    static MObject aOutTanWeight;
-    static MObject aInTanAuto;
-    static MObject aOutTanAuto;
-    static MObject aInSmooth;
-    static MObject aOutSmooth;
-    static MObject aInParentInv;
-    static MObject aOutParentInv;
-    static MObject aTwistParentInv;
-    static MObject aVertData;
+	static MObject aVertMat;
+	static MObject aInTanMat;
+	static MObject aOutTanMat;
+	static MObject aInTanWeight;
+	static MObject aOutTanWeight;
+	static MObject aInTanAuto;
+	static MObject aOutTanAuto;
+	static MObject aInSmooth;
+	static MObject aOutSmooth;
+	static MObject aInParentInv;
+	static MObject aOutParentInv;
+	static MObject aTwistParentInv;
+	static MObject aVertData;
 
-    static MObject aStartTension;
-    static MObject aEndTension;
-    static MObject aMaxVertices;
-    static MObject aClosed;
+	static MObject aStartTension;
+	static MObject aEndTension;
+	static MObject aMaxVertices;
+	static MObject aClosed;
 
 	// outputs
-    static MObject aInTanX;
-    static MObject aInTanY;
-    static MObject aInTanZ;
-    static MObject aInTan;
-    static MObject aOutTanX;
-    static MObject aOutTanY;
-    static MObject aOutTanZ;
-    static MObject aOutTan;
-    static MObject aInTanLen;
-    static MObject aOutTanLen;
-    static MObject aOutTwistUpX;
-    static MObject aOutTwistUpY;
-    static MObject aOutTwistUpZ;
-    static MObject aOutTwistUp;
-    static MObject aOutTwistMat;
-    static MObject aTangents;
+	static MObject aInTanX;
+	static MObject aInTanY;
+	static MObject aInTanZ;
+	static MObject aInTan;
+	static MObject aOutTanX;
+	static MObject aOutTanY;
+	static MObject aOutTanZ;
+	static MObject aOutTan;
+	static MObject aInTanLen;
+	static MObject aOutTanLen;
+	static MObject aOutTwistUpX;
+	static MObject aOutTwistUpY;
+	static MObject aOutTwistUpZ;
+	static MObject aOutTwistUp;
+	static MObject aOutTwistMat;
+	static MObject aTangents;
 
-	static MTypeId	id;
+	static MTypeId id;
+
 };
 
 

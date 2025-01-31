@@ -64,10 +64,10 @@ inline Vector reject(const Vector &onto, const Vector &n) {
 
 template <typename Quat>
 inline Quat qmult(const Quat &q, const Quat &r){
-    return Quat(r[0]*q[0]-r[1]*q[1]-r[2]*q[2]-r[3]*q[3],
-            r[0]*q[1]+r[1]*q[0]-r[2]*q[3]+r[3]*q[2],
-            r[0]*q[2]+r[1]*q[3]+r[2]*q[0]-r[3]*q[1],
-            r[0]*q[3]-r[1]*q[2]+r[2]*q[1]+r[3]*q[0]);
+	return Quat(r[0]*q[0]-r[1]*q[1]-r[2]*q[2]-r[3]*q[3],
+		r[0]*q[1]+r[1]*q[0]-r[2]*q[3]+r[3]*q[2],
+		r[0]*q[2]+r[1]*q[3]+r[2]*q[0]-r[3]*q[1],
+		r[0]*q[3]-r[1]*q[2]+r[2]*q[1]+r[3]*q[0]);
 }
 
 template <typename Vector, typename Quat>

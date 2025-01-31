@@ -60,12 +60,12 @@ public:
 	static MObject aParams;
 		static MObject aParam;
 
-        static MObject aUseMin;
-        static MObject aMinParam;
-        static MObject aUseMax;
-        static MObject aMaxParam;
+	static MObject aUseMin;
+	static MObject aMinParam;
+	static MObject aUseMax;
+	static MObject aMaxParam;
 
-		static MObject aParentInverseMatrix;
+	static MObject aParentInverseMatrix;
 
 	// output
 	static MObject aOutputs;

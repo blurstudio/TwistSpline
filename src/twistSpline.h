@@ -648,20 +648,24 @@ public:
 	std::vector<Float> getRemap() const { return remap; }
 	Float getTotalLength() const { return totalLength; }
 
-	/// Copy constructor
-	TwistSpline(TwistSpline const &old){
-		this->verts = old.verts;
-		this->quats = old.quats;
-		this->scales = old.scales;
-		this->lockPositions = old.lockPositions;
-		this->lockValues = old.lockValues;
-		this->userTwists = old.userTwists;
-		this->twistLocks = old.twistLocks;
-		this->orientLocks = old.orientLocks;
-		this->remap = old.remap;
-		this->projSteps = old.projSteps;
-		this->lutSteps = old.lutSteps;
-		this->totalLength = old.totalLength;
+	/// Copy constructor by reference and by shared_ptr just for convenience
+	TwistSpline(TwistSpline const &old) : TwistSpline(&old){}
+	TwistSpline(const std::shared_ptr<TwistSpline> &old) : TwistSpline(old.get()){}
+
+	/// Copy constructor by pointer
+	TwistSpline(const TwistSpline * const old){
+		this->verts = old->verts;
+		this->quats = old->quats;
+		this->scales = old->scales;
+		this->lockPositions = old->lockPositions;
+		this->lockValues = old->lockValues;
+		this->userTwists = old->userTwists;
+		this->twistLocks = old->twistLocks;
+		this->orientLocks = old->orientLocks;
+		this->remap = old->remap;
+		this->projSteps = old->projSteps;
+		this->lutSteps = old->lutSteps;
+		this->totalLength = old->totalLength;
 		IndexType numVerts = size(verts);
 		if (numVerts < 2) {
 			segments.clear();
@@ -677,7 +681,7 @@ public:
 			ss = {&(scales[3*i]), &(scales[3*i + 1]), &(scales[3*i + 2]), &(scales[3*i + 3])};
 			qq = {&(quats[3*i]), &(quats[3*i + 1]), &(quats[3*i + 2]), &(quats[3*i + 3])};
 			segments[i] = std::unique_ptr<TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>>(
-				new TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>(*(old.segments[i]), vv, ss, qq)
+				new TwistSplineSegment<PointArray, Point, VectorArray, Vector, QuatArray, Quat, Float>(*(old->segments[i]), vv, ss, qq)
 			);
 		}
 	}

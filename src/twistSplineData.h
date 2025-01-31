@@ -52,8 +52,8 @@ public:
 	virtual void copy(const MPxData& other);
 
     // Data access
-	const TwistSplineT* getSpline() const;
-    TwistSplineT* getSpline();
+	const std::shared_ptr<TwistSplineT> getSharedSpline() const;
+    std::shared_ptr<TwistSplineT> getSharedSpline();
 
     // static methods and data.
     MTypeId typeId() const; 
@@ -63,6 +63,6 @@ public:
     static void* creator();
 
 private:
-    std::unique_ptr<TwistSplineT> _twistSpline;
+    std::shared_ptr<TwistSplineT> _twistSpline;
 };
 

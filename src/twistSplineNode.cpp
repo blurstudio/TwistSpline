@@ -207,7 +207,7 @@ MStatus TwistSplineNode::initialize() {
 	return MS::kSuccess;
 }
 
-TwistSplineT* TwistSplineNode::getSplineData() const {
+std::shared_ptr<TwistSplineT> TwistSplineNode::getSplineData() const {
 	MStatus stat;
 	MObject output;
 
@@ -216,11 +216,11 @@ TwistSplineT* TwistSplineNode::getSplineData() const {
 	tPlug.getValue(output);
 	MFnPluginData outData(output);
 	auto tsd = dynamic_cast<TwistSplineData *>(outData.data());
-	return tsd->getSpline();
+	return tsd->getSharedSpline();
 }
 
 MBoundingBox TwistSplineNode::boundingBox() const {
-	TwistSplineT *ts = getSplineData();
+	std::shared_ptr<TwistSplineT> ts = getSplineData();
 
 	double minx, miny, minz, maxx, maxy, maxz;
 	minx = miny = minz = std::numeric_limits<double>::max();
@@ -390,7 +390,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		MCHECKERROR(status);
 		outSplineData = dynamic_cast<TwistSplineData*>(fnDataCreator.data(&status));
 		MCHECKERROR(status);
-		TwistSplineT *outSpline = outSplineData->getSpline();
+		std::shared_ptr<TwistSplineT> outSpline = outSplineData->getSharedSpline();
 
 		//if (points.length() != 0)
 			outSpline->setVerts(points, scales, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
@@ -416,7 +416,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		}
 
 		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
-		TwistSplineT *spline = inSplineData->getSpline();
+		std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
 		if (spline == nullptr) {
 			outHandle.setMObject(MObject::kNullObj);
 			return MS::kSuccess;
@@ -457,7 +457,7 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		}
 
 		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
-		TwistSplineT *spline = inSplineData->getSpline();
+		std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
 
 		if (spline == nullptr) {
 			outHandle.setDouble(0.0);

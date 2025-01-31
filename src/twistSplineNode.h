@@ -53,7 +53,7 @@ class TwistSplineNode : public MPxLocatorNode
 {
 public:
 	TwistSplineNode();
-	virtual	~TwistSplineNode();
+	virtual ~TwistSplineNode();
 
 	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
 	MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray) override;
@@ -66,7 +66,7 @@ public:
 					   MObjectArray& monitoredAttributes) const override;
 	void postConstructor() override;
 	static void* creator();
-	static	MStatus	initialize();
+	static MStatus initialize();
 	virtual bool isBounded() const { return true; }
 	virtual MBoundingBox boundingBox() const;
 	std::shared_ptr<TwistSplineT> getSplineData() const;

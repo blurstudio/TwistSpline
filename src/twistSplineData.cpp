@@ -29,7 +29,7 @@ const MTypeId TwistSplineData::id(0x001226FB);
 const MString TwistSplineData::typeName("TwistSplineData");
 
 void* TwistSplineData::creator(){
-    return new TwistSplineData;
+	return new TwistSplineData;
 }
 
 TwistSplineData::TwistSplineData()
@@ -61,11 +61,11 @@ std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline(){
 }
 
 MTypeId TwistSplineData::typeId() const {
-    return TwistSplineData::id;
+	return TwistSplineData::id;
 }
 
 MString TwistSplineData::name() const { 
-    return TwistSplineData::typeName; 
+	return TwistSplineData::typeName; 
 }
 
 MStatus TwistSplineData::readASCII(const MArgList& args, unsigned& lastParsedElement) {

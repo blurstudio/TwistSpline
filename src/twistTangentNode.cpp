@@ -42,7 +42,7 @@ SOFTWARE.
 
 #define CHECKSTAT(m) if (!status) {status.perror(m); return status;};
 
-MTypeId	TwistTangentNode::id(0x001226FA);
+MTypeId TwistTangentNode::id(0x001226FA);
 
 MObject TwistTangentNode::aOutLinearTarget;
 MObject TwistTangentNode::aOutLinearTargetX;
@@ -326,7 +326,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MVector nextTfm = nextTMat.getTranslation(MSpace::kWorld);
 		double weight = weightH.asDouble();
 
-        MVector curNrm = curTMat.asMatrix()[1];
+		MVector curNrm = curTMat.asMatrix()[1];
 
 		MVector preLeg = preTfm - curTfm;
 		MVector nextLeg = nextTfm - curTfm;
@@ -346,7 +346,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			// If we're in a straight line, default to using the local
 			// y-axis as the up-direction
 			//nrm = MVector(0.0, 1.0, 0.0);
-            nrm = curNrm;
+			nrm = curNrm;
 			bin = (nrm ^ tan).normal();
 			nrm = (tan ^ bin).normal();
 			smo = nextLeg / 3.0;
@@ -358,7 +358,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			smo = tan * (nextLegLen / 3.0);
 
 			//nrm = MVector(0.0, 1.0, 0.0);
-            nrm = curNrm;
+			nrm = curNrm;
 			bin = (nrm ^ tan).normal();
 			nrm = (tan ^ bin).normal();
 
@@ -376,7 +376,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 			smo = smo * (nextLegLen / 3.0);
 
 			//nrm = MVector(0.0, 1.0, 0.0);
-            nrm = curNrm;
+			nrm = curNrm;
 			bin = (nrm ^ tan).normal();
 			nrm = (tan ^ bin).normal();
 
@@ -393,9 +393,9 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// x-> tan, y-> nrm, z->bin
 		double mm[4][4] = {
-			{tan[0],	tan[1],    tan[2],	  0.0},
-			{nrm[0],	nrm[1],    nrm[2],	  0.0},
-			{bin[0],	bin[1],    bin[2],	  0.0},
+			{tan[0],    tan[1],    tan[2],    0.0},
+			{nrm[0],    nrm[1],    nrm[2],    0.0},
+			{bin[0],    bin[1],    bin[2],    0.0},
 			{curTfm[0], curTfm[1], curTfm[2], 1.0}
 		};
 		MMatrix outMat(mm);

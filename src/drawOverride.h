@@ -135,7 +135,7 @@ class TwistSplineGeometryOverride : public MPxGeometryOverride {
 	Restoration, requiresGeometryUpdate() is the only method get called.
 	(No updateDG() call) Thus the data must be stored in the node.
 	*/
-	TwistSplineNode* mTwistSplineNode;	// The node we are rendering
+	TwistSplineNode* mTwistSplineNode; // The node we are rendering
 };
 
 #endif

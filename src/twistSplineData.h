@@ -41,28 +41,28 @@ typedef TwistSpline<MPointArray, MPoint, MVectorArray, MVector, std::vector<MQua
 
 class TwistSplineData : public MPxData {
 public:
-    TwistSplineData();
-    virtual ~TwistSplineData();
+	TwistSplineData();
+	virtual ~TwistSplineData();
 
-    // Override methods in MPxData.
-    virtual MStatus readASCII(const MArgList&, unsigned& lastElement);
-    virtual MStatus readBinary(istream& in, unsigned length);
-    virtual MStatus writeASCII(ostream& out);
-    virtual MStatus writeBinary(ostream& out);
-	virtual void copy(const MPxData& other);
+	// Override methods in MPxData.
+	virtual MStatus readASCII(const MArgList&, unsigned& lastElement);
+	virtual MStatus readBinary(istream& in, unsigned length);
+	virtual MStatus writeASCII(ostream& out);
+	virtual MStatus writeBinary(ostream& out);
+	    virtual void copy(const MPxData& other);
 
-    // Data access
-	const std::shared_ptr<TwistSplineT> getSharedSpline() const;
-    std::shared_ptr<TwistSplineT> getSharedSpline();
+	// Data access
+	    const std::shared_ptr<TwistSplineT> getSharedSpline() const;
+	std::shared_ptr<TwistSplineT> getSharedSpline();
 
-    // static methods and data.
-    MTypeId typeId() const; 
-    MString name() const;
-    static const MString typeName;
-    static const MTypeId id;
-    static void* creator();
+	// static methods and data.
+	MTypeId typeId() const; 
+	MString name() const;
+	static const MString typeName;
+	static const MTypeId id;
+	static void* creator();
 
 private:
-    std::shared_ptr<TwistSplineT> _twistSpline;
+	std::shared_ptr<TwistSplineT> _twistSpline;
 };
 

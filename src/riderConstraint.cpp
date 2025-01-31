@@ -47,61 +47,61 @@ SOFTWARE.
 #include "twistSplineData.h"
 
 
-#define ROTATE_ORDER_XYZ		0
-#define ROTATE_ORDER_YZX		1
-#define ROTATE_ORDER_ZXY		2
-#define ROTATE_ORDER_XZY		3
-#define ROTATE_ORDER_YXZ		4
-#define ROTATE_ORDER_ZYX		5
+#define ROTATE_ORDER_XYZ        0
+#define ROTATE_ORDER_YZX        1
+#define ROTATE_ORDER_ZXY        2
+#define ROTATE_ORDER_XZY        3
+#define ROTATE_ORDER_YXZ        4
+#define ROTATE_ORDER_ZYX        5
 
 #define CHECKSTAT(m) if (!status) {status.perror(m); return status;};
 
-MTypeId		riderConstraint::id(0x001226FC);
+MTypeId     riderConstraint::id(0x001226FC);
 
-MObject		riderConstraint::aRotateOrder;
-MObject		riderConstraint::aGlobalOffset;
-MObject		riderConstraint::aGlobalSpread;
-MObject		riderConstraint::aScaleCompensation;
-MObject		riderConstraint::aUseCycle;
-MObject		riderConstraint::aNormalize;
-MObject		riderConstraint::aNormValue;
+MObject     riderConstraint::aRotateOrder;
+MObject     riderConstraint::aGlobalOffset;
+MObject     riderConstraint::aGlobalSpread;
+MObject     riderConstraint::aScaleCompensation;
+MObject     riderConstraint::aUseCycle;
+MObject     riderConstraint::aNormalize;
+MObject     riderConstraint::aNormValue;
 
-MObject		riderConstraint::aUseGlobalMin;
-MObject		riderConstraint::aMinGlobalParam;
-MObject		riderConstraint::aUseGlobalMax;
-MObject		riderConstraint::aMaxGlobalParam;
+MObject     riderConstraint::aUseGlobalMin;
+MObject     riderConstraint::aMinGlobalParam;
+MObject     riderConstraint::aUseGlobalMax;
+MObject     riderConstraint::aMaxGlobalParam;
 
 // inputs
-MObject		riderConstraint::aInputSplines;
-	MObject		riderConstraint::aSpline;
-	MObject		riderConstraint::aSplineLength;
-	MObject		riderConstraint::aEndParam;
-	MObject		riderConstraint::aWeight;
+MObject     riderConstraint::aInputSplines;
+	MObject     riderConstraint::aSpline;
+	MObject     riderConstraint::aSplineLength;
+	MObject     riderConstraint::aEndParam;
+	MObject     riderConstraint::aWeight;
 
 
-MObject		riderConstraint::aParams;
-	MObject		riderConstraint::aParam;
-	MObject		riderConstraint::aUseMin;
-	MObject		riderConstraint::aMinParam;
-	MObject		riderConstraint::aUseMax;
-	MObject		riderConstraint::aMaxParam;
-	MObject		riderConstraint::aParentInverseMatrix;
+MObject     riderConstraint::aParams;
+	MObject     riderConstraint::aParam;
+	MObject     riderConstraint::aUseMin;
+	MObject     riderConstraint::aMinParam;
+	MObject     riderConstraint::aUseMax;
+	MObject     riderConstraint::aMaxParam;
+	MObject     riderConstraint::aParentInverseMatrix;
 
 
 // output
-MObject		riderConstraint::aOutputs;
-	MObject		riderConstraint::aTranslate;
-	MObject		riderConstraint::aTranslateX;
-	MObject		riderConstraint::aTranslateY;
-	MObject		riderConstraint::aTranslateZ;
-	MObject		riderConstraint::aRotate;
-	MObject		riderConstraint::aRotateX;
-	MObject		riderConstraint::aRotateY;
-	MObject		riderConstraint::aRotateZ;
-	MObject		riderConstraint::aScale;
-	MObject		riderConstraint::aScaleX;
-	MObject		riderConstraint::aScaleY;
-	MObject		riderConstraint::aScaleZ;
+MObject     riderConstraint::aOutputs;
+	MObject     riderConstraint::aTranslate;
+	MObject     riderConstraint::aTranslateX;
+	MObject     riderConstraint::aTranslateY;
+	MObject     riderConstraint::aTranslateZ;
+	MObject     riderConstraint::aRotate;
+	MObject     riderConstraint::aRotateX;
+	MObject     riderConstraint::aRotateY;
+	MObject     riderConstraint::aRotateZ;
+	MObject     riderConstraint::aScale;
+	MObject     riderConstraint::aScaleX;
+	MObject     riderConstraint::aScaleY;
+	MObject     riderConstraint::aScaleZ;
 
 MStatus riderConstraint::initialize() {
 	MStatus status;
@@ -564,10 +564,10 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				p *= gSpread;
 				p += gOffset;
 
-				if (useGlobalMin)	{ p = std::fmax(minGlobalParam, p); }
-				if (pUseMins[pIdx]) { p = std::fmax(pMins[pIdx],	p); }
-				if (useGlobalMax)	{ p = std::fmin(maxGlobalParam, p); }
-				if (pUseMaxs[pIdx]) { p = std::fmin(pMaxs[pIdx],	p); }
+				if (useGlobalMin)   { p = std::fmax(minGlobalParam, p); }
+				if (pUseMins[pIdx]) { p = std::fmax(pMins[pIdx],    p); }
+				if (useGlobalMax)   { p = std::fmin(maxGlobalParam, p); }
+				if (pUseMaxs[pIdx]) { p = std::fmin(pMaxs[pIdx],    p); }
 
 				if (doNorm > 0.0) {
 					p = (doNorm) * (p * mp / normVal) + (1.0 - doNorm) * (p);
@@ -589,7 +589,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				mat[0][0] = tan[0]; mat[1][0] = norm[0]; mat[2][0] = binorm[0]; mat[3][0] = 0.0;
 				mat[0][1] = tan[1]; mat[1][1] = norm[1]; mat[2][1] = binorm[1]; mat[3][1] = 0.0;
 				mat[0][2] = tan[2]; mat[1][2] = norm[2]; mat[2][2] = binorm[2]; mat[3][2] = 0.0;
-				mat[0][3] = 0.0;	mat[1][3] = 0.0;	 mat[2][3] = 0.0;		mat[3][3] = 1.0;
+				mat[0][3] = 0.0;    mat[1][3] = 0.0;     mat[2][3] = 0.0;       mat[3][3] = 1.0;
 				MQuaternion q;
 				q = MMatrix(mat);
 				tquats.push_back(std::move(q));

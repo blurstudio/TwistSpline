@@ -55,14 +55,14 @@ SOFTWARE.
 #include "twistSplineNode.h"
 
 #define MCHECKERROR(STAT)         \
-    if (MS::kSuccess != STAT) {   \
-        return MS::kFailure;      \
-    }
+	if (MS::kSuccess != STAT) {   \
+		return MS::kFailure;      \
+	}
 
 
-MTypeId	TwistSplineNode::id(0x001226F7);
-MString	TwistSplineNode::drawDbClassification("drawdb/geometry/twistSpline");
-MString	TwistSplineNode::drawRegistrantId("TwistSplineNodePlugin");
+MTypeId TwistSplineNode::id(0x001226F7);
+MString TwistSplineNode::drawDbClassification("drawdb/geometry/twistSpline");
+MString TwistSplineNode::drawRegistrantId("TwistSplineNodePlugin");
 
 MObject TwistSplineNode::aOutputSpline;
 MObject TwistSplineNode::aSplineLength;
@@ -172,7 +172,7 @@ MStatus TwistSplineNode::initialize() {
 
 	addAttribute(aVertexData);
 
-    std::vector<MObject *> ins, outs, lenup;
+	std::vector<MObject *> ins, outs, lenup;
 	ins.push_back(&aScaleCompensation);
 	ins.push_back(&aInTangent);
 	ins.push_back(&aControlVertex);
@@ -278,7 +278,7 @@ void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
 
 }
 
-MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
+MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 	if (plug == aOutputSpline) {
 		MStatus status;
 
@@ -309,8 +309,8 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
 		unsigned ecount = inputs.elementCount();
 
-        // Trim the number of vertices to the maximum provided by the user
-        if (maxVertices < ecount) { ecount = maxVertices; }
+		// Trim the number of vertices to the maximum provided by the user
+		if (maxVertices < ecount) { ecount = maxVertices; }
 
 		// I'm OK with just looping over the physical indices here
 		// because if it's unconnected, then I don't really care
@@ -395,9 +395,9 @@ MStatus	TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		//if (points.length() != 0)
 			outSpline->setVerts(points, scales, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
 
-        // Testing closest point
-        //outSpline->buildKDTree();
-        //auto cp = outSpline->getClosestPoint(MPoint());
+		// Testing closest point
+		//outSpline->buildKDTree();
+		//auto cp = outSpline->getClosestPoint(MPoint());
 
 		storageH.setMPxData(outSplineData);
 		data.setClean(aOutputSpline);

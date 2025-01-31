@@ -380,7 +380,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		// I can optimize things a lot more if we do everything at once
 		// So, whatever plug is asked for, just compute it all
 		MStatus status;
-		std::vector<TwistSplineT*> splines;
+		std::vector<std::shared_ptr<TwistSplineT>> splines;
 		std::vector<double> weights;
 		std::vector<double> splineLens;
 		std::vector<double> endParams;
@@ -417,7 +417,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			double endParam = endParamH.asDouble();
 
 			auto inSplineData = (TwistSplineData *)pd;
-			TwistSplineT *spline = inSplineData->getSpline();
+			std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
 			if (spline == nullptr) {
 				inSpAH.next();
 				continue;
@@ -533,7 +533,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 		bool twisted = splines.size() == 1;
 
 		for (size_t sIdx = 0; sIdx<splines.size(); ++sIdx) {
-			TwistSplineT *spline = splines[sIdx];
+			std::shared_ptr<TwistSplineT> spline = splines[sIdx];
 			if (spline == nullptr) continue;
 
 			double mp = endParams[sIdx];

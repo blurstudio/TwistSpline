@@ -69,7 +69,7 @@ public:
 	static	MStatus	initialize();
 	virtual bool isBounded() const { return true; }
 	virtual MBoundingBox boundingBox() const;
-	TwistSplineT* getSplineData() const;
+	std::shared_ptr<TwistSplineT> getSplineData() const;
 	void getDebugDraw(bool &oDraw, double &oScale) const;
 	void getSplineDraw(bool &oDraw) const;
 

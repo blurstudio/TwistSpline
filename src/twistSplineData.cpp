@@ -42,22 +42,22 @@ TwistSplineData::~TwistSplineData() {
 
 void TwistSplineData::copy(const MPxData& other) {
 	if (other.typeId() == TwistSplineData::id) {
-		const TwistSplineData* otherData = (const TwistSplineData*) & other;
-		_twistSpline = std::make_unique<TwistSplineT>(*otherData->getSpline());
+		const TwistSplineData* otherData = static_cast<const TwistSplineData*>(&other);
+		_twistSpline = std::make_shared<TwistSplineT>(otherData->getSharedSpline());
 	}
 	else {
-		//  we need to convert to the other type based on its iff Tag
+		// we need to convert to the other type based on its iff Tag
 		cerr << "wrong data format!" << endl;
 	}
 	return;
 }
 
-const TwistSplineT* TwistSplineData::getSpline() const {
-    return _twistSpline.get();
+const std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline() const {
+	return _twistSpline;
 }
 
-TwistSplineT* TwistSplineData::getSpline() {
-    return _twistSpline.get();
+std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline(){
+	return _twistSpline;
 }
 
 MTypeId TwistSplineData::typeId() const {

@@ -66,6 +66,8 @@ MString TwistSplineNode::drawRegistrantId("TwistSplineNodePlugin");
 
 MObject TwistSplineNode::aOutputSpline;
 MObject TwistSplineNode::aSplineLength;
+MObject TwistSplineNode::aMinParam;
+MObject TwistSplineNode::aMaxParam;
 MObject TwistSplineNode::aNurbsData;
 
 MObject TwistSplineNode::aVertexData;
@@ -109,6 +111,14 @@ MStatus TwistSplineNode::initialize() {
 	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
 	nAttr.setWritable(false);
 	addAttribute(aSplineLength);
+
+	aMinParam = uAttr.create("minParam", "mp", MFnUnitAttribute::kDistance);
+	nAttr.setWritable(false);
+	addAttribute(aMinParam);
+
+	aMaxParam = uAttr.create("maxParam", "xp", MFnUnitAttribute::kDistance);
+	nAttr.setWritable(false);
+	addAttribute(aMaxParam);
 
 	aGeometryChanging = nAttr.create("geometryChanging", "gch", MFnNumericData::kBoolean, true);
 	nAttr.setStorable(false);
@@ -172,27 +182,14 @@ MStatus TwistSplineNode::initialize() {
 
 	addAttribute(aVertexData);
 
-	std::vector<MObject *> ins, outs, lenup;
-	ins.push_back(&aScaleCompensation);
-	ins.push_back(&aInTangent);
-	ins.push_back(&aControlVertex);
-	ins.push_back(&aOutTangent);
-	ins.push_back(&aParamValue);
-	ins.push_back(&aParamWeight);
-	ins.push_back(&aTwistWeight);
-	ins.push_back(&aTwistValue);
-	ins.push_back(&aUseOrient);
-	ins.push_back(&aMaxVertices);
-	ins.push_back(&aTwistMultiplier);
 
-	outs.push_back(&aOutputSpline);
-	outs.push_back(&aNurbsData);
-	outs.push_back(&aGeometryChanging);
 
-	lenup.push_back(&aInTangent);
-	lenup.push_back(&aControlVertex);
-	lenup.push_back(&aOutTangent);
-	lenup.push_back(&aMaxVertices);
+	std::vector<MObject *> ins = {
+		&aScaleCompensation, &aInTangent, &aControlVertex, &aOutTangent, &aParamValue,
+		&aParamWeight, &aTwistWeight, &aTwistValue, &aUseOrient, &aMaxVertices, &aTwistMultiplier
+	};
+	std::vector<MObject *> outs = { &aOutputSpline, &aNurbsData, &aGeometryChanging, &aMinParam, &aMaxParam };
+	std::vector<MObject *> lenup = { &aInTangent, &aControlVertex, &aOutTangent, &aMaxVertices };
 
 	for (auto inptr: ins){
 		for (auto outptr: outs){
@@ -473,6 +470,42 @@ MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		boolHandle.setBool(true);
 		boolHandle.setClean();
 	}
+
+	else if (plug == aMinParam || plug == aMaxParam) {
+		// First, get the splines that need computing, and their weight.
+		MDataHandle inHandle = data.inputValue(aOutputSpline);
+		MDataHandle minOutHandle = data.outputValue(aMinParam);
+		MDataHandle maxOutHandle = data.outputValue(aMaxParam);
+
+		MPxData* pd = inHandle.asPluginData();
+		if (pd == nullptr) {
+			minOutHandle.setDouble(0.0);
+			maxOutHandle.setDouble(0.0);
+			return MS::kSuccess;
+		}
+
+		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
+		std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
+
+		if (spline == nullptr) {
+			minOutHandle.setDouble(0.0);
+			maxOutHandle.setDouble(0.0);
+			return MS::kSuccess;
+		}
+
+		auto remap = spline->getRemap();
+		if (remap.empty()){
+			minOutHandle.setDouble(0.0);
+			maxOutHandle.setDouble(0.0);
+			return MS::kSuccess;
+		}
+
+		minOutHandle.setDouble(remap[0]);
+		maxOutHandle.setDouble(remap[remap.size() - 1]);
+		data.setClean(aMinParam);
+		data.setClean(aMaxParam);
+	}
+
 	else {
 		return MS::kUnknownParameter;
 	}

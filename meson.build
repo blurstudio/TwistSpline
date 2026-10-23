@@ -1,6 +1,7 @@
 project('TwistSpline', 'cpp')
 
 maya_dep = dependency('maya')
+maya_gl_dep = dependency('maya-opengl')
 maya_name_suffix = maya_dep.get_variable('name_suffix')
 maya_version = maya_dep.get_variable('maya_version')
 
@@ -36,7 +37,7 @@ outlib = shared_library(
   install: true,
   install_dir : meson.global_source_root() / 'output_Maya' + maya_version,
   include_directories : include_directories(['src']),
-  dependencies : maya_dep,
+  dependencies : [maya_dep, maya_gl_dep],
   name_prefix : '',
   name_suffix : maya_name_suffix,
 )

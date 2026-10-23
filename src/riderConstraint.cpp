@@ -68,8 +68,10 @@ MObject     riderConstraint::aNormValue;
 
 MObject     riderConstraint::aUseGlobalMin;
 MObject     riderConstraint::aMinGlobalParam;
+MObject     riderConstraint::aRelativeGlobalMin;
 MObject     riderConstraint::aUseGlobalMax;
 MObject     riderConstraint::aMaxGlobalParam;
+MObject     riderConstraint::aRelativeGlobalMax;
 
 // inputs
 MObject     riderConstraint::aInputSplines;
@@ -185,6 +187,12 @@ MStatus riderConstraint::initialize() {
 	status = addAttribute(aMinGlobalParam);
 	CHECKSTAT("aMinGlobalParam");
 
+	aRelativeGlobalMin = nAttr.create("relativeGlobalMin", "rgn", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aRelativeGlobalMin");
+	nAttr.setKeyable(true);
+	status = addAttribute(aRelativeGlobalMin);
+	CHECKSTAT("aRelativeGlobalMin");
+
 	aUseGlobalMax = nAttr.create("useGlobalMax", "ugx", MFnNumericData::kBoolean, false, &status);
 	CHECKSTAT("aUseGlobalMax");
 	nAttr.setKeyable(true);
@@ -196,6 +204,12 @@ MStatus riderConstraint::initialize() {
 	nAttr.setKeyable(true);
 	status = addAttribute(aMaxGlobalParam);
 	CHECKSTAT("aMaxGlobalParam");
+
+	aRelativeGlobalMax = nAttr.create("relativeGlobalMax", "rgx", MFnNumericData::kBoolean, false, &status);
+	CHECKSTAT("aRelativeGlobalMax");
+	nAttr.setKeyable(true);
+	status = addAttribute(aRelativeGlobalMax);
+	CHECKSTAT("aRelativeGlobalMax");
 
 
 	// Spline input array
@@ -354,7 +368,8 @@ MStatus riderConstraint::initialize() {
 		&aInputSplines, &aSpline, &aSplineLength, &aEndParam, &aWeight, &aParams, &aParam,
 		&aParentInverseMatrix, &aGlobalOffset, &aUseCycle, &aGlobalSpread, &aNormalize,
 		&aNormValue, &aUseMin, &aMinParam, &aUseMax, &aMaxParam,
-		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam, &aScaleCompensation
+		&aUseGlobalMin, &aMinGlobalParam, &aUseGlobalMax, &aMaxGlobalParam, &aScaleCompensation,
+		&aRelativeGlobalMin, &aRelativeGlobalMax
 	};
 
 	std::vector<MObject *> oobjs = {
@@ -502,8 +517,10 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 
 		MDataHandle useGlobalMinH = data.inputValue(aUseGlobalMin);
 		MDataHandle minGlobalParamH = data.inputValue(aMinGlobalParam);
+		MDataHandle relativeGlobalMinH = data.inputValue(aRelativeGlobalMin);
 		MDataHandle useGlobalMaxH = data.inputValue(aUseGlobalMax);
 		MDataHandle maxGlobalParamH = data.inputValue(aMaxGlobalParam);
+		MDataHandle relativeGlobalMaxH = data.inputValue(aRelativeGlobalMax);
 
 		MDataHandle normalizeH = data.inputValue(aNormalize);
 		MDataHandle normValueH = data.inputValue(aNormValue);
@@ -519,8 +536,10 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 
 		bool useGlobalMin = useGlobalMinH.asBool();
 		double minGlobalParam = minGlobalParamH.asDouble();
+		bool relativeGlobalMin = relativeGlobalMinH.asBool();
 		bool useGlobalMax = useGlobalMaxH.asBool();
 		double maxGlobalParam = maxGlobalParamH.asDouble();
+		bool relativeGlobalMax = relativeGlobalMaxH.asBool();
 		// Loop through the splines to get the transform groups
 		// There is no single way to interpolate between orientations
 		// I'm just going to do the simple thing (for now) and N-LERP
@@ -546,6 +565,16 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				mrmp = rmp[rmp.size() - 1];
 			}
 
+			// Relative min/max are measured from the actual ends of the spline after pinning
+			// The min/max values get the same scaling and normalization as the params, then
+			// get shifted from the rest start (0) and rest end (mp) to the current start and end
+			const auto splineRemap = spline->getRemap();
+			bool relMin = useGlobalMin && relativeGlobalMin && !splineRemap.empty();
+			bool relMax = useGlobalMax && relativeGlobalMax && !splineRemap.empty();
+			double normScale = (doNorm > 0.0) ? doNorm * (mp / normVal) + (1.0 - doNorm) : 1.0;
+			double relMinParam = relMin ? splineRemap[0] + minGlobalParam * scaleComp * normScale : 0.0;
+			double relMaxParam = relMax ? splineRemap[splineRemap.size() - 1] + maxGlobalParam * scaleComp * normScale - mp : 0.0;
+
 			std::vector<MPoint> ttrans, tscales;
 			std::vector<MQuaternion> tquats;
 			std::vector<double> ttwists;
@@ -564,9 +593,9 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 				p *= gSpread;
 				p += gOffset;
 
-				if (useGlobalMin)   { p = std::fmax(minGlobalParam, p); }
+				if (useGlobalMin && !relMin) { p = std::fmax(minGlobalParam, p); }
 				if (pUseMins[pIdx]) { p = std::fmax(pMins[pIdx],    p); }
-				if (useGlobalMax)   { p = std::fmin(maxGlobalParam, p); }
+				if (useGlobalMax && !relMax) { p = std::fmin(maxGlobalParam, p); }
 				if (pUseMaxs[pIdx]) { p = std::fmin(pMaxs[pIdx],    p); }
 
 				if (doNorm > 0.0) {
@@ -578,6 +607,9 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 					else
 						p = mrmp - std::fmod(-p, mrmp);
 				}
+				// Do these last so nothing can push the rider past the relative min/max
+				if (relMin) { p = std::fmax(relMinParam, p); }
+				if (relMax) { p = std::fmin(relMaxParam, p); }
 
 				spline->matrixAtParam(p, tan, norm, binorm, tran, scale, twist, twisted);
 				ttrans.push_back(std::move(tran));

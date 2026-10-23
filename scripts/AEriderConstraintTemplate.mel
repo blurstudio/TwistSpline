@@ -13,8 +13,10 @@ global proc AEriderConstraintTemplate( string $nodeName ) {
         editorTemplate -label "Norm Value" -addControl "normValue";
         editorTemplate -label "Use Global Min" -addControl "useGlobalMin";
         editorTemplate -label "Min Global Param" -addControl "minGlobalParam";
+        editorTemplate -label "Relative Global Min" -addControl "relativeGlobalMin";
         editorTemplate -label "Use Global Max" -addControl "useGlobalMax";
         editorTemplate -label "Max Global Param" -addControl "maxGlobalParam";
+        editorTemplate -label "Relative Global Max" -addControl "relativeGlobalMax";
     editorTemplate -endLayout;
 
 	editorTemplate -label "Input Splines" -addControl "inputSplines";

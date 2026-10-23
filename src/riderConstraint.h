@@ -47,8 +47,10 @@ public:
 	static MObject aNormValue;
 	static MObject aUseGlobalMin;
 	static MObject aMinGlobalParam;
+	static MObject aRelativeGlobalMin;
 	static MObject aUseGlobalMax;
 	static MObject aMaxGlobalParam;
+	static MObject aRelativeGlobalMax;
 
 	// inputs
 	static MObject aInputSplines;

@@ -90,6 +90,9 @@ void TwistSplineGeometryOverride::addUIDrawables(
 	const MHWRender::MFrameContext& frameContext) {
 	// Retrieve the spline data to draw elements;
 	auto splineData = mTwistSplineNode->getSplineData();
+	if (splineData == nullptr) {
+		return;
+	}
 	auto splinePoints = splineData->getPoints();
 
 	bool splineDraw;

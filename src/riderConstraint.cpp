@@ -433,7 +433,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 
 			auto inSplineData = (TwistSplineData *)pd;
 			std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
-			if (spline == nullptr) {
+			if (spline == nullptr || spline->empty()) {
 				inSpAH.next();
 				continue;
 			}
@@ -568,7 +568,7 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			// Relative min/max are measured from the actual ends of the spline after pinning
 			// The min/max values get the same scaling and normalization as the params, then
 			// get shifted from the rest start (0) and rest end (mp) to the current start and end
-			const auto splineRemap = spline->getRemap();
+			const auto &splineRemap = spline->getRemap();
 			bool relMin = useGlobalMin && relativeGlobalMin && !splineRemap.empty();
 			bool relMax = useGlobalMax && relativeGlobalMax && !splineRemap.empty();
 			double normScale = (doNorm > 0.0) ? doNorm * (mp / normVal) + (1.0 - doNorm) : 1.0;
@@ -654,12 +654,12 @@ MStatus riderConstraint::compute(const MPlug& plug, MDataBlock& data) {
 			// Weight the quaternions
 			for (size_t pIdx = 0; pIdx < params.size(); ++pIdx) {
 				MQuaternion prev = quats[0][pIdx].normal();
+				double accum = weights[0]; // The total weight already blended into prev
 				for (size_t sIdx = 1; sIdx < splines.size(); ++sIdx) {
 					MQuaternion cur = quats[sIdx][pIdx];
-					double pw = weights[sIdx - 1]; // preWeight
 					double cw = weights[sIdx]; // currentWeight
-					double s = pw + cw;
-					prev = slerp(prev, cur, cw / s);
+					accum += cw;
+					prev = slerp(prev, cur, cw / accum);
 				}
 				MQuaternion xt(otwists[pIdx], MVector(1.0, 0.0, 0.0));
 				prev = xt * prev;

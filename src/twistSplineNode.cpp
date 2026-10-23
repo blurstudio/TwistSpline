@@ -319,7 +319,7 @@ MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		// because if it's unconnected, then I don't really care
 		double sGet[4];
 		sGet[3] = 1.0;
-		bool gotLocks = false, gotOris = false;
+		bool gotLocks = false, gotOris = false, gotTwistLocks = false;
 		for (unsigned i = 0; i < ecount; ++i) {
 			auto group = inputs.inputValue();
 
@@ -332,7 +332,11 @@ MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			lockVals.push_back(lockIt);
 			if (lockIt > 0.0) gotLocks = true;
 
-			twistLock.push_back(group.child(aTwistWeight).asDouble());
+			double twistLockIt = group.child(aTwistWeight).asDouble();
+			twistLock.push_back(twistLockIt);
+			if (twistLockIt > 0.0) {
+				gotTwistLocks = true;
+			}
 			userTwist.push_back(group.child(aTwistValue).asDouble() * twistMultiplier);
 
 			double oriIt = group.child(aUseOrient).asDouble();
@@ -375,11 +379,16 @@ MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 		if (scales.length() > 0)
 			scales.remove(scales.length() - 1);
 
+		// With no locks, the solve is singular and returns NaN
+		// So make sure we always have some lock value
 		if (!gotLocks && !lockVals.empty())
 			lockVals[0] = 1.0;
 
 		if (!gotOris && !orientLock.empty())
 			orientLock[0] = 1.0;
+
+		if (!gotTwistLocks && !twistLock.empty())
+			twistLock[0] = 1.0;
 
 		// Output Data Handles
 		MDataHandle storageH = data.outputValue(aOutputSpline, &status);

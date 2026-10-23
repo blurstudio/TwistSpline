@@ -62,6 +62,8 @@ inline Vector reject(const Vector &onto, const Vector &n) {
 	return normalized<Vector, Float>(n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto));
 }
 
+// The generic quaternion helpers assume scalar-first (w, x, y, z) ordering for operator[] and the 4-arg constructor
+// Types that use (x, y, z, w) ordering, like MQuaternion, must specialize rotateBy (see twistSpline_maya.h)
 template <typename Quat>
 inline Quat qmult(const Quat &q, const Quat &r){
 	return Quat(r[0]*q[0]-r[1]*q[1]-r[2]*q[2]-r[3]*q[3],

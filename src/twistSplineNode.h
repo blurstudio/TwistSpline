@@ -81,6 +81,8 @@ public:
 public:
 	static MObject aOutputSpline;
 	static MObject aSplineLength;
+	static MObject aMinParam;
+	static MObject aMaxParam;
 	static MObject aMaxVertices;
 	static MObject aTwistMultiplier;
 

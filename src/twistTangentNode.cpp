@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <cmath>
 #include <vector>
 
 #include <maya/MPlug.h>
@@ -234,6 +235,7 @@ MStatus TwistTangentNode::initialize() {
 	smoothAffectors.push_back(&aWeight);
 	smoothAffectors.push_back(&aBackpoint);
 	smoothAffectors.push_back(&aEndpoint);
+	smoothAffectors.push_back(&aParentInverseMatrix);
 
 	smoothAffecteds.push_back(&aSmoothTan);
 	smoothAffecteds.push_back(&aSmoothTanX);
@@ -340,7 +342,7 @@ MStatus TwistTangentNode::compute(const MPlug& plug, MDataBlock& data) {
 		MVector preNorm = preLeg / preLegLen;
 		MVector postNorm = nextLeg / nextLegLen;
 		double dot = preNorm * postNorm;
-		if (abs(dot) >= 0.999999999 || preLegLen == 0.0) { // Linear case
+		if (std::abs(dot) >= 0.999999999 || preLegLen == 0.0) { // Linear case
 			tan = nextLeg.normal();
 
 			// If we're in a straight line, default to using the local

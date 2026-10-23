@@ -425,12 +425,9 @@ buildVertMatTangent(double nextLegLen, double preLegLen, MVector &nextLegNrm, MV
 	if (dot > 0.999999999) {
 		// pre/next legs are pointing the same direction
 		// so we've got a 180 turnaround
-		MVector y;
+		MVector y(0, 1, 0);
 		if (std::abs(preLegNrm * y) > 0.999999999) {
 			y = MVector(1, 0, 0);
-		}
-		else {
-			y = MVector(0, 1, 0);
 		}
 		return (preLegNrm ^ y).normal();
 	}
@@ -480,7 +477,7 @@ void buildSmoothMats(std::vector<TanData> &dat, double startTension, double endT
 
 		size_t s = dat.size();
 		dat[s - 1].inTan.smoothTan =
-			(dat[s - 2].tfm + dat[s - 2].outTan.smoothTan * startTension - dat[s - 1].tfm) *
+			(dat[s - 2].tfm + dat[s - 2].outTan.smoothTan * endTension - dat[s - 1].tfm) *
 			(dat[s - 1].inTan.weight / 2);
 
 		dat[s - 1].smoothMat = buildMat(dat[s - 1].tfm, dat[s - 1].norm, -dat[s - 1].inTan.smoothTan.normal());

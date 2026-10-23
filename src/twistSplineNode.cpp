@@ -109,15 +109,15 @@ MStatus TwistSplineNode::initialize() {
 	addAttribute(aNurbsData);
 
 	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
-	nAttr.setWritable(false);
+	uAttr.setWritable(false);
 	addAttribute(aSplineLength);
 
 	aMinParam = uAttr.create("minParam", "mp", MFnUnitAttribute::kDistance);
-	nAttr.setWritable(false);
+	uAttr.setWritable(false);
 	addAttribute(aMinParam);
 
 	aMaxParam = uAttr.create("maxParam", "xp", MFnUnitAttribute::kDistance);
-	nAttr.setWritable(false);
+	uAttr.setWritable(false);
 	addAttribute(aMaxParam);
 
 	aGeometryChanging = nAttr.create("geometryChanging", "gch", MFnNumericData::kBoolean, true);
@@ -213,20 +213,26 @@ std::shared_ptr<TwistSplineT> TwistSplineNode::getSplineData() const {
 	tPlug.getValue(output);
 	MFnPluginData outData(output);
 	auto tsd = dynamic_cast<TwistSplineData *>(outData.data());
+	if (tsd == nullptr) {
+		return nullptr;
+	}
 	return tsd->getSharedSpline();
 }
 
 MBoundingBox TwistSplineNode::boundingBox() const {
 	std::shared_ptr<TwistSplineT> ts = getSplineData();
+	if (ts == nullptr || ts->getVerts().length() == 0) {
+		return MBoundingBox();
+	}
 
 	double minx, miny, minz, maxx, maxy, maxz;
 	minx = miny = minz = std::numeric_limits<double>::max();
-	maxx = maxy = maxz = std::numeric_limits<double>::min();
+	maxx = maxy = maxz = std::numeric_limits<double>::lowest();
 
-	MPointArray pts = ts->getVerts();
+	const MPointArray &pts = ts->getVerts();
 
 	for (unsigned i = 0; i < pts.length(); ++i) {
-		MPoint &pt = pts[i];
+		const MPoint &pt = pts[i];
 		minx = pt[0] < minx ? pt[0] : minx;
 		miny = pt[1] < miny ? pt[1] : miny;
 		minz = pt[2] < minz ? pt[2] : minz;
@@ -421,8 +427,8 @@ MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 
 		// Construct the nurbs curve data.
 		unsigned degree = 3;
-		MPointArray cvs = spline->getVerts();
-		std::vector<double> remaps = spline->getRemap();
+		const MPointArray &cvs = spline->getVerts();
+		const std::vector<double> &remaps = spline->getRemap();
 		MDoubleArray knots(static_cast<unsigned>(remaps.size()) * 3, 0);
 		unsigned c = 0;
 		for (double p: remaps){
@@ -493,7 +499,7 @@ MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
 			return MS::kSuccess;
 		}
 
-		auto remap = spline->getRemap();
+		const auto &remap = spline->getRemap();
 		if (remap.empty()){
 			minOutHandle.setDouble(0.0);
 			maxOutHandle.setDouble(0.0);
@@ -547,7 +553,7 @@ MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
 			plug == aControlVertex || plug == aMaxVertices ||
 			plug == aParamValue || plug == aParamWeight ||
 			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient ||
-			plug == aScaleCompensation) {
+			plug == aScaleCompensation || plug == aTwistMultiplier) {
 			MObject thisNode = thisMObject();
 			MPlug outputSplinePlug(thisNode, aOutputSpline);
 			MPlug nurbsDataPlug(thisNode, aNurbsData);

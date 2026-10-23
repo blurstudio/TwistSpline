@@ -53,7 +53,7 @@ inline Vector normalized(const Vector &a) {
 
 template <typename Vector>
 inline Vector cross(const Vector &a, const Vector &b) {
-	return Vector((a[1] * b[2] - a[2] * b[1]), (a[0] * b[2] - a[2] * b[0]), (a[0] * b[1] - a[1] * b[0]));
+	return Vector((a[1] * b[2] - a[2] * b[1]), (a[2] * b[0] - a[0] * b[2]), (a[0] * b[1] - a[1] * b[0]));
 }
 
 /// Like projection except you get the perpendicular component of the vector

@@ -730,7 +730,7 @@ public:
 			}
 			else {
 				const auto &pre = segments[i-1];
-				IndexType last = pre->getLutSteps() - 1;
+				IndexType last = pre->getLutSteps();
 				Vector d = pre->getRawNormals()[last];
 				Vector a = pre->getTangents()[last];
 				Vector b = normalized(verts[3 * i + 1] - verts[3 * i]);

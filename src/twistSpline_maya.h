@@ -25,60 +25,39 @@ SOFTWARE.
 #pragma once
 
 #include <maya/MPoint.h>
-#include <maya/MVector.h>
-#include <maya/MQuaternion.h>
 #include <maya/MPointArray.h>
+#include <maya/MQuaternion.h>
+#include <maya/MVector.h>
 #include <maya/MVectorArray.h>
+
 #include <cmath>
 
-template <>
-inline void resize<MPointArray>(MPointArray &a, unsigned size){
-	a.setLength(size);
+template <> inline void resize<MPointArray>(MPointArray &a, unsigned size) { a.setLength(size); }
+
+template <> inline unsigned size<MPointArray>(const MPointArray &a) { return a.length(); }
+
+template <> inline void resize<MVectorArray>(MVectorArray &a, unsigned size) { a.setLength(size); }
+
+template <> inline unsigned size<MVectorArray>(const MVectorArray &a) { return a.length(); }
+
+template <typename Float = double> inline Float dot(const MVector &a, const MVector &b)
+{
+    return a * b;
 }
 
-template <>
-inline unsigned size<MPointArray>(const MPointArray &a) {
-	return a.length();
-}
+template <typename Float = double> inline Float length(const MVector &a) { return sqrt(dot(a, a)); }
 
-template <>
-inline void resize<MVectorArray>(MVectorArray &a, unsigned size) {
-	a.setLength(size);
-}
+template <> inline MVector normalized(const MVector &a) { return a / length(a); }
 
-template <>
-inline unsigned size<MVectorArray>(const MVectorArray &a) {
-	return a.length();
-}
-
-template <typename Float=double>
-inline Float dot(const MVector &a, const MVector &b) {
-	return a * b;
-}
-
-template <typename Float=double>
-inline Float length(const MVector &a) {
-	return sqrt(dot(a, a));
-}
-
-template <>
-inline MVector normalized(const MVector &a) {
-	return a / length(a);
-}
-
-template <>
-inline MVector cross(const MVector &a, const MVector &b) {
-	return a ^ b;
-}
+template <> inline MVector cross(const MVector &a, const MVector &b) { return a ^ b; }
 
 /// Like projection except you get the perpendicular component of the vector
-template <>
-inline MVector reject(const MVector &onto, const MVector &n){
-	return (n - (((n * onto) / (onto * onto)) * onto)).normal();
+template <> inline MVector reject(const MVector &onto, const MVector &n)
+{
+    return (n - (((n * onto) / (onto * onto)) * onto)).normal();
 }
 
-template <>
-inline MVector rotateBy(const MVector &vec, const MQuaternion &quat){
-	return vec.rotateBy(quat);
+template <> inline MVector rotateBy(const MVector &vec, const MQuaternion &quat)
+{
+    return vec.rotateBy(quat);
 }
-

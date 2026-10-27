@@ -23,68 +23,65 @@ SOFTWARE.
 */
 
 #pragma once
-#include <maya/MPxNode.h>
 #include <maya/MFnDependencyNode.h>
+#include <maya/MPxNode.h>
 
 class riderConstraint : public MPxNode {
-public:
-	riderConstraint() {}
-	static void* creator() {
-		return new riderConstraint();
-	}
-	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
-	static  MStatus initialize();
-	void postConstructor() override;
+  public:
+    riderConstraint() {}
+    static void *creator() { return new riderConstraint(); }
+    virtual MStatus compute(const MPlug &plug, MDataBlock &data);
+    static MStatus initialize();
+    void postConstructor() override;
 
-public:
-	// inputs
-	static MObject aRotateOrder;
-	static MObject aGlobalOffset;
-	static MObject aGlobalSpread;
-	static MObject aScaleCompensation;
-	static MObject aUseCycle;
-	static MObject aNormalize;
-	static MObject aNormValue;
-	static MObject aUseGlobalMin;
-	static MObject aMinGlobalParam;
-	static MObject aRelativeGlobalMin;
-	static MObject aUseGlobalMax;
-	static MObject aMaxGlobalParam;
-	static MObject aRelativeGlobalMax;
+  public:
+    // inputs
+    static MObject aRotateOrder;
+    static MObject aGlobalOffset;
+    static MObject aGlobalSpread;
+    static MObject aScaleCompensation;
+    static MObject aUseCycle;
+    static MObject aNormalize;
+    static MObject aNormValue;
+    static MObject aUseGlobalMin;
+    static MObject aMinGlobalParam;
+    static MObject aRelativeGlobalMin;
+    static MObject aUseGlobalMax;
+    static MObject aMaxGlobalParam;
+    static MObject aRelativeGlobalMax;
 
-	// inputs
-	static MObject aInputSplines;
-		static MObject aSpline;
-		static MObject aSplineLength;
-		static MObject aEndParam;
-		static MObject aWeight;
+    // inputs
+    static MObject aInputSplines;
+    static MObject aSpline;
+    static MObject aSplineLength;
+    static MObject aEndParam;
+    static MObject aWeight;
 
-	static MObject aParams;
-		static MObject aParam;
+    static MObject aParams;
+    static MObject aParam;
 
-	static MObject aUseMin;
-	static MObject aMinParam;
-	static MObject aUseMax;
-	static MObject aMaxParam;
+    static MObject aUseMin;
+    static MObject aMinParam;
+    static MObject aUseMax;
+    static MObject aMaxParam;
 
-	static MObject aParentInverseMatrix;
+    static MObject aParentInverseMatrix;
 
-	// output
-	static MObject aOutputs;
-		static MObject aOutMat;
-		static MObject aTranslate;
-		static MObject aTranslateX;
-		static MObject aTranslateY;
-		static MObject aTranslateZ;
-		static MObject aRotate;
-		static MObject aRotateX;
-		static MObject aRotateY;
-		static MObject aRotateZ;
-		static MObject aScale;
-		static MObject aScaleX;
-		static MObject aScaleY;
-		static MObject aScaleZ;
+    // output
+    static MObject aOutputs;
+    static MObject aOutMat;
+    static MObject aTranslate;
+    static MObject aTranslateX;
+    static MObject aTranslateY;
+    static MObject aTranslateZ;
+    static MObject aRotate;
+    static MObject aRotateX;
+    static MObject aRotateY;
+    static MObject aRotateZ;
+    static MObject aScale;
+    static MObject aScaleX;
+    static MObject aScaleY;
+    static MObject aScaleZ;
 
-	static MTypeId id;
+    static MTypeId id;
 };
-

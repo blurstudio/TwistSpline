@@ -1,0 +1,8 @@
+---
+BasedOnStyle: LLVM
+Language: Cpp
+AlignAfterOpenBracket: BlockIndent
+AllowShortFunctionsOnASingleLine: All
+BreakBeforeBraces: Stroustrup
+ColumnLimit: 100
+IndentWidth: 4

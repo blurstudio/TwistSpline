@@ -22,43 +22,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include "twistSplineNode.h"
+
 #include <maya/M3dView.h>
-#include <maya/MPlug.h>
+#include <maya/MBoundingBox.h>
 #include <maya/MDataBlock.h>
 #include <maya/MDataHandle.h>
 #include <maya/MEvaluationManager.h>
-#include <maya/MGlobal.h>
 #include <maya/MFnCompoundAttribute.h>
 #include <maya/MFnMatrixAttribute.h>
 #include <maya/MFnNurbsCurve.h>
 #include <maya/MFnNurbsCurveData.h>
-#include <maya/MFnUnitAttribute.h>
-#include <maya/MMatrix.h>
 #include <maya/MFnPluginData.h>
+#include <maya/MFnUnitAttribute.h>
+#include <maya/MGlobal.h>
+#include <maya/MMatrix.h>
+#include <maya/MPlug.h>
+#include <maya/MPoint.h>
+#include <maya/MPointArray.h>
+#include <maya/MPxGeometryOverride.h>
+#include <maya/MQuaternion.h>
 #include <maya/MTransformationMatrix.h>
 #include <maya/MTypes.h>
 #include <maya/MVector.h>
-#include <maya/MPoint.h>
 #include <maya/MVectorArray.h>
-#include <maya/MPointArray.h>
-#include <maya/MBoundingBox.h>
-#include <maya/MPxGeometryOverride.h>
-#include <maya/MQuaternion.h>
 
 #include <cassert>
-#include <string>
 #include <iostream>
 #include <limits>
+#include <string>
 
 #include "twistSpline.h"
 #include "twistSplineData.h"
-#include "twistSplineNode.h"
 
-#define MCHECKERROR(STAT)         \
-	if (MS::kSuccess != STAT) {   \
-		return MS::kFailure;      \
-	}
-
+#define MCHECKERROR(STAT)                                                                          \
+    if (MS::kSuccess != STAT) {                                                                    \
+        return MS::kFailure;                                                                       \
+    }
 
 MTypeId TwistSplineNode::id(0x001226F7);
 MString TwistSplineNode::drawDbClassification("drawdb/geometry/twistSpline");
@@ -91,567 +91,593 @@ MObject TwistSplineNode::aTwistMultiplier;
 TwistSplineNode::TwistSplineNode() {}
 TwistSplineNode::~TwistSplineNode() {}
 
-MStatus TwistSplineNode::initialize() {
-	MFnCompoundAttribute cAttr;
-	MFnMatrixAttribute mAttr;
-	MFnTypedAttribute tAttr;
-	MFnNumericAttribute nAttr;
-	MFnUnitAttribute uAttr;
+MStatus TwistSplineNode::initialize()
+{
+    MFnCompoundAttribute cAttr;
+    MFnMatrixAttribute mAttr;
+    MFnTypedAttribute tAttr;
+    MFnNumericAttribute nAttr;
+    MFnUnitAttribute uAttr;
 
-	//---------------- Output ------------------
+    //---------------- Output ------------------
 
-	aOutputSpline = tAttr.create("outputSpline", "os", TwistSplineData::id);
-	tAttr.setWritable(false);
-	addAttribute(aOutputSpline);
+    aOutputSpline = tAttr.create("outputSpline", "os", TwistSplineData::id);
+    tAttr.setWritable(false);
+    addAttribute(aOutputSpline);
 
-	aNurbsData = tAttr.create("outputNurbsCurve", "onc", MFnNurbsCurveData::kNurbsCurve, MObject::kNullObj);
-	tAttr.setWritable(false);
-	addAttribute(aNurbsData);
+    aNurbsData =
+        tAttr.create("outputNurbsCurve", "onc", MFnNurbsCurveData::kNurbsCurve, MObject::kNullObj);
+    tAttr.setWritable(false);
+    addAttribute(aNurbsData);
 
-	aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
-	uAttr.setWritable(false);
-	addAttribute(aSplineLength);
+    aSplineLength = uAttr.create("splineLength", "sl", MFnUnitAttribute::kDistance);
+    uAttr.setWritable(false);
+    addAttribute(aSplineLength);
 
-	aMinParam = uAttr.create("minParam", "mp", MFnUnitAttribute::kDistance);
-	uAttr.setWritable(false);
-	addAttribute(aMinParam);
+    aMinParam = uAttr.create("minParam", "mp", MFnUnitAttribute::kDistance);
+    uAttr.setWritable(false);
+    addAttribute(aMinParam);
 
-	aMaxParam = uAttr.create("maxParam", "xp", MFnUnitAttribute::kDistance);
-	uAttr.setWritable(false);
-	addAttribute(aMaxParam);
+    aMaxParam = uAttr.create("maxParam", "xp", MFnUnitAttribute::kDistance);
+    uAttr.setWritable(false);
+    addAttribute(aMaxParam);
 
-	aGeometryChanging = nAttr.create("geometryChanging", "gch", MFnNumericData::kBoolean, true);
-	nAttr.setStorable(false);
-	nAttr.setHidden(true);
-	nAttr.setConnectable(false);
-	addAttribute(aGeometryChanging);
+    aGeometryChanging = nAttr.create("geometryChanging", "gch", MFnNumericData::kBoolean, true);
+    nAttr.setStorable(false);
+    nAttr.setHidden(true);
+    nAttr.setConnectable(false);
+    addAttribute(aGeometryChanging);
 
-	//--------------- Input -------------------
+    //--------------- Input -------------------
 
-	aScaleCompensation = nAttr.create("scaleCompensation", "sclcmp", MFnNumericData::kDouble, 1.0);
-	addAttribute(aScaleCompensation);
-	aSplineDisplay = nAttr.create("splineDisplay", "sd", MFnNumericData::kBoolean, true);
-	addAttribute(aSplineDisplay);
-	aDebugDisplay = nAttr.create("debugDisplay", "dd", MFnNumericData::kBoolean, false);
-	addAttribute(aDebugDisplay);
-	aDebugScale = nAttr.create("debugScale", "ds", MFnNumericData::kDouble, 1.0);
-	addAttribute(aDebugScale);
-	aMaxVertices = nAttr.create("maxVertices", "mv", MFnNumericData::kInt, 1000);
-	nAttr.setMin(2);
-	addAttribute(aMaxVertices);
-	aTwistMultiplier = nAttr.create("twistMultiplier", "tm", MFnNumericData::kDouble, -1.0);
-	addAttribute(aTwistMultiplier);
+    aScaleCompensation = nAttr.create("scaleCompensation", "sclcmp", MFnNumericData::kDouble, 1.0);
+    addAttribute(aScaleCompensation);
+    aSplineDisplay = nAttr.create("splineDisplay", "sd", MFnNumericData::kBoolean, true);
+    addAttribute(aSplineDisplay);
+    aDebugDisplay = nAttr.create("debugDisplay", "dd", MFnNumericData::kBoolean, false);
+    addAttribute(aDebugDisplay);
+    aDebugScale = nAttr.create("debugScale", "ds", MFnNumericData::kDouble, 1.0);
+    addAttribute(aDebugScale);
+    aMaxVertices = nAttr.create("maxVertices", "mv", MFnNumericData::kInt, 1000);
+    nAttr.setMin(2);
+    addAttribute(aMaxVertices);
+    aTwistMultiplier = nAttr.create("twistMultiplier", "tm", MFnNumericData::kDouble, -1.0);
+    addAttribute(aTwistMultiplier);
 
-	//--------------- Array -------------------
+    //--------------- Array -------------------
 
-	aInTangent = mAttr.create("inTangent", "int");
-	mAttr.setHidden(true);
-	mAttr.setDefault(MMatrix::identity);
+    aInTangent = mAttr.create("inTangent", "int");
+    mAttr.setHidden(true);
+    mAttr.setDefault(MMatrix::identity);
 
-	aOutTangent = mAttr.create("outTangent", "ot");
-	mAttr.setHidden(true);
-	mAttr.setDefault(MMatrix::identity);
+    aOutTangent = mAttr.create("outTangent", "ot");
+    mAttr.setHidden(true);
+    mAttr.setDefault(MMatrix::identity);
 
-	aControlVertex = mAttr.create("controlVertex", "cv");
-	mAttr.setHidden(true);
-	mAttr.setDefault(MMatrix::identity);
+    aControlVertex = mAttr.create("controlVertex", "cv");
+    mAttr.setHidden(true);
+    mAttr.setDefault(MMatrix::identity);
 
-	aParamValue = nAttr.create("paramValue", "pv", MFnNumericData::kDouble, 0.0);
-	aParamWeight = nAttr.create("paramWeight", "pw", MFnNumericData::kDouble, 0.0);
-	nAttr.setMin(0.0);
-	nAttr.setMax(1.0);
-	aTwistValue = uAttr.create("twistValue", "tv", MFnUnitAttribute::kAngle, 0.0);
-	aTwistWeight = nAttr.create("twistWeight", "tw", MFnNumericData::kDouble, 0.0);
-	nAttr.setMin(0.0);
-	nAttr.setMax(1.0);
-	aUseOrient = nAttr.create("useOrient", "uo", MFnNumericData::kDouble, 0.0);
-	nAttr.setMin(0.0);
-	nAttr.setMax(1.0);
+    aParamValue = nAttr.create("paramValue", "pv", MFnNumericData::kDouble, 0.0);
+    aParamWeight = nAttr.create("paramWeight", "pw", MFnNumericData::kDouble, 0.0);
+    nAttr.setMin(0.0);
+    nAttr.setMax(1.0);
+    aTwistValue = uAttr.create("twistValue", "tv", MFnUnitAttribute::kAngle, 0.0);
+    aTwistWeight = nAttr.create("twistWeight", "tw", MFnNumericData::kDouble, 0.0);
+    nAttr.setMin(0.0);
+    nAttr.setMax(1.0);
+    aUseOrient = nAttr.create("useOrient", "uo", MFnNumericData::kDouble, 0.0);
+    nAttr.setMin(0.0);
+    nAttr.setMax(1.0);
 
-	aVertexData = cAttr.create("vertexData", "vd");
-	cAttr.setArray(true);
-	cAttr.addChild(aInTangent); // matrix
-	cAttr.addChild(aControlVertex); // matrix
-	cAttr.addChild(aOutTangent); // matrix
+    aVertexData = cAttr.create("vertexData", "vd");
+    cAttr.setArray(true);
+    cAttr.addChild(aInTangent);     // matrix
+    cAttr.addChild(aControlVertex); // matrix
+    cAttr.addChild(aOutTangent);    // matrix
 
-	cAttr.addChild(aParamValue); // float unbounded
-	cAttr.addChild(aParamWeight); // float 0-1
-	cAttr.addChild(aTwistWeight); // float 0-1
-	cAttr.addChild(aUseOrient); // float 0-1
-	cAttr.addChild(aTwistValue); // float unbounded
+    cAttr.addChild(aParamValue);  // float unbounded
+    cAttr.addChild(aParamWeight); // float 0-1
+    cAttr.addChild(aTwistWeight); // float 0-1
+    cAttr.addChild(aUseOrient);   // float 0-1
+    cAttr.addChild(aTwistValue);  // float unbounded
 
-	addAttribute(aVertexData);
+    addAttribute(aVertexData);
 
+    std::vector<MObject *> ins = {&aScaleCompensation, &aInTangent,      &aControlVertex,
+                                  &aOutTangent,        &aParamValue,     &aParamWeight,
+                                  &aTwistWeight,       &aTwistValue,     &aUseOrient,
+                                  &aMaxVertices,       &aTwistMultiplier};
+    std::vector<MObject *> outs = {
+        &aOutputSpline, &aNurbsData, &aGeometryChanging, &aMinParam, &aMaxParam
+    };
+    std::vector<MObject *> lenup = {&aInTangent, &aControlVertex, &aOutTangent, &aMaxVertices};
 
+    for (auto inptr : ins) {
+        for (auto outptr : outs) {
+            attributeAffects(*inptr, *outptr);
+        }
+    }
 
-	std::vector<MObject *> ins = {
-		&aScaleCompensation, &aInTangent, &aControlVertex, &aOutTangent, &aParamValue,
-		&aParamWeight, &aTwistWeight, &aTwistValue, &aUseOrient, &aMaxVertices, &aTwistMultiplier
-	};
-	std::vector<MObject *> outs = { &aOutputSpline, &aNurbsData, &aGeometryChanging, &aMinParam, &aMaxParam };
-	std::vector<MObject *> lenup = { &aInTangent, &aControlVertex, &aOutTangent, &aMaxVertices };
+    for (auto lenptr : lenup) {
+        attributeAffects(*lenptr, aSplineLength);
+    }
 
-	for (auto inptr: ins){
-		for (auto outptr: outs){
-			attributeAffects(*inptr, *outptr);
-		}
-	}
-
-	for (auto lenptr: lenup){
-		attributeAffects(*lenptr, aSplineLength);
-	}
-
-	return MS::kSuccess;
+    return MS::kSuccess;
 }
 
-std::shared_ptr<TwistSplineT> TwistSplineNode::getSplineData() const {
-	MStatus stat;
-	MObject output;
+std::shared_ptr<TwistSplineT> TwistSplineNode::getSplineData() const
+{
+    MStatus stat;
+    MObject output;
 
-	// Getting this plug causes an update
-	MPlug tPlug(thisMObject(), aOutputSpline);
-	tPlug.getValue(output);
-	MFnPluginData outData(output);
-	auto tsd = dynamic_cast<TwistSplineData *>(outData.data());
-	if (tsd == nullptr) {
-		return nullptr;
-	}
-	return tsd->getSharedSpline();
+    // Getting this plug causes an update
+    MPlug tPlug(thisMObject(), aOutputSpline);
+    tPlug.getValue(output);
+    MFnPluginData outData(output);
+    auto tsd = dynamic_cast<TwistSplineData *>(outData.data());
+    if (tsd == nullptr) {
+        return nullptr;
+    }
+    return tsd->getSharedSpline();
 }
 
-MBoundingBox TwistSplineNode::boundingBox() const {
-	std::shared_ptr<TwistSplineT> ts = getSplineData();
-	if (ts == nullptr || ts->getVerts().length() == 0) {
-		return MBoundingBox();
-	}
+MBoundingBox TwistSplineNode::boundingBox() const
+{
+    std::shared_ptr<TwistSplineT> ts = getSplineData();
+    if (ts == nullptr || ts->getVerts().length() == 0) {
+        return MBoundingBox();
+    }
 
-	double minx, miny, minz, maxx, maxy, maxz;
-	minx = miny = minz = std::numeric_limits<double>::max();
-	maxx = maxy = maxz = std::numeric_limits<double>::lowest();
+    double minx, miny, minz, maxx, maxy, maxz;
+    minx = miny = minz = std::numeric_limits<double>::max();
+    maxx = maxy = maxz = std::numeric_limits<double>::lowest();
 
-	const MPointArray &pts = ts->getVerts();
+    const MPointArray &pts = ts->getVerts();
 
-	for (unsigned i = 0; i < pts.length(); ++i) {
-		const MPoint &pt = pts[i];
-		minx = pt[0] < minx ? pt[0] : minx;
-		miny = pt[1] < miny ? pt[1] : miny;
-		minz = pt[2] < minz ? pt[2] : minz;
-		maxx = pt[0] > maxx ? pt[0] : maxx;
-		maxy = pt[1] > maxy ? pt[1] : maxy;
-		maxz = pt[2] > maxz ? pt[2] : maxz;
-	}
-	return MBoundingBox(MPoint(minx, miny, minz), MPoint(maxx, maxy, maxz));
+    for (unsigned i = 0; i < pts.length(); ++i) {
+        const MPoint &pt = pts[i];
+        minx = pt[0] < minx ? pt[0] : minx;
+        miny = pt[1] < miny ? pt[1] : miny;
+        minz = pt[2] < minz ? pt[2] : minz;
+        maxx = pt[0] > maxx ? pt[0] : maxx;
+        maxy = pt[1] > maxy ? pt[1] : maxy;
+        maxz = pt[2] > maxz ? pt[2] : maxz;
+    }
+    return MBoundingBox(MPoint(minx, miny, minz), MPoint(maxx, maxy, maxz));
 }
 
-void TwistSplineNode::getSplineDraw(bool &oDraw) const {
-	MStatus stat;
-	MObject mobj = thisMObject();
+void TwistSplineNode::getSplineDraw(bool &oDraw) const
+{
+    MStatus stat;
+    MObject mobj = thisMObject();
 
-	oDraw = false;
-	if (!mobj.isNull()) {
-		MPlug drawPlug(mobj, aSplineDisplay);
-		if (!drawPlug.isNull())
-			drawPlug.getValue(oDraw);
-	}
+    oDraw = false;
+    if (!mobj.isNull()) {
+        MPlug drawPlug(mobj, aSplineDisplay);
+        if (!drawPlug.isNull()) {
+            drawPlug.getValue(oDraw);
+        }
+    }
 }
 
-void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const {
-	MStatus stat;
-	MObject mobj = thisMObject();
+void TwistSplineNode::getDebugDraw(bool &oDraw, double &oScale) const
+{
+    MStatus stat;
+    MObject mobj = thisMObject();
 
-	oDraw = false;
-	oScale = 1.0;
-	if (!mobj.isNull()) {
-		MPlug drawPlug(mobj, aDebugDisplay);
-		if (!drawPlug.isNull()) {
-			drawPlug.getValue(oDraw);
-		}
+    oDraw = false;
+    oScale = 1.0;
+    if (!mobj.isNull()) {
+        MPlug drawPlug(mobj, aDebugDisplay);
+        if (!drawPlug.isNull()) {
+            drawPlug.getValue(oDraw);
+        }
 
-		MPlug scaleCompPlug(mobj, aScaleCompensation);
-		double scaleComp = 1.0;
-		if (!scaleCompPlug.isNull())
-			scaleCompPlug.getValue(scaleComp);
+        MPlug scaleCompPlug(mobj, aScaleCompensation);
+        double scaleComp = 1.0;
+        if (!scaleCompPlug.isNull()) {
+            scaleCompPlug.getValue(scaleComp);
+        }
 
-		MPlug scalePlug(mobj, aDebugScale);
-		if (!scalePlug.isNull()) {
-			scalePlug.getValue(oScale);
-			oScale *= scaleComp;
-		}
-	}
-
+        MPlug scalePlug(mobj, aDebugScale);
+        if (!scalePlug.isNull()) {
+            scalePlug.getValue(oScale);
+            oScale *= scaleComp;
+        }
+    }
 }
 
-MStatus TwistSplineNode::compute(const MPlug& plug, MDataBlock& data) {
-	if (plug == aOutputSpline) {
-		MStatus status;
+MStatus TwistSplineNode::compute(const MPlug &plug, MDataBlock &data)
+{
+    if (plug == aOutputSpline) {
+        MStatus status;
 
-		// Get all input Data
-		MPointArray points;
-		MPointArray scales;
-		std::vector<MQuaternion> quats;
-		std::vector<double> lockPositions;
-		std::vector<double> lockVals;
-		std::vector<double> twistLock;
-		std::vector<double> userTwist;
-		std::vector<double> orientLock;
+        // Get all input Data
+        MPointArray points;
+        MPointArray scales;
+        std::vector<MQuaternion> quats;
+        std::vector<double> lockPositions;
+        std::vector<double> lockVals;
+        std::vector<double> twistLock;
+        std::vector<double> userTwist;
+        std::vector<double> orientLock;
 
-		MDataHandle hMaxVertices = data.inputValue(aMaxVertices);
-		int rawMaxVertices = hMaxVertices.asInt();
-		if (rawMaxVertices < 0) {
-			rawMaxVertices = 0;
-		}
-		unsigned maxVertices = static_cast<unsigned>(rawMaxVertices);
+        MDataHandle hMaxVertices = data.inputValue(aMaxVertices);
+        int rawMaxVertices = hMaxVertices.asInt();
+        if (rawMaxVertices < 0) {
+            rawMaxVertices = 0;
+        }
+        unsigned maxVertices = static_cast<unsigned>(rawMaxVertices);
 
-		MDataHandle scaleCompH = data.inputValue(aScaleCompensation);
-		double scaleComp = scaleCompH.asDouble();
+        MDataHandle scaleCompH = data.inputValue(aScaleCompensation);
+        double scaleComp = scaleCompH.asDouble();
 
-		MDataHandle hTwistMultiplier = data.inputValue(aTwistMultiplier);
-		double twistMultiplier = hTwistMultiplier.asDouble();
+        MDataHandle hTwistMultiplier = data.inputValue(aTwistMultiplier);
+        double twistMultiplier = hTwistMultiplier.asDouble();
 
-		// loop over the input matrices
-		MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
-		unsigned ecount = inputs.elementCount();
+        // loop over the input matrices
+        MArrayDataHandle inputs = data.inputArrayValue(aVertexData);
+        unsigned ecount = inputs.elementCount();
 
-		// Trim the number of vertices to the maximum provided by the user
-		if (maxVertices < ecount) { ecount = maxVertices; }
+        // Trim the number of vertices to the maximum provided by the user
+        if (maxVertices < ecount) {
+            ecount = maxVertices;
+        }
 
-		// I'm OK with just looping over the physical indices here
-		// because if it's unconnected, then I don't really care
-		double sGet[4];
-		sGet[3] = 1.0;
-		bool gotLocks = false, gotOris = false, gotTwistLocks = false;
-		for (unsigned i = 0; i < ecount; ++i) {
-			auto group = inputs.inputValue();
+        // I'm OK with just looping over the physical indices here
+        // because if it's unconnected, then I don't really care
+        double sGet[4];
+        sGet[3] = 1.0;
+        bool gotLocks = false, gotOris = false, gotTwistLocks = false;
+        for (unsigned i = 0; i < ecount; ++i) {
+            auto group = inputs.inputValue();
 
-			// Ensure all parameters are scale compensated when the global rig is scaled.
-			lockPositions.push_back(group.child(aParamValue).asDouble() * scaleComp);
+            // Ensure all parameters are scale compensated when the global rig is scaled.
+            lockPositions.push_back(group.child(aParamValue).asDouble() * scaleComp);
 
-			// The lock value has to be scaled up when the global rig scales, so multiply
-			// it by the scale compensation plug value.
-			double lockIt = group.child(aParamWeight).asDouble();
-			lockVals.push_back(lockIt);
-			if (lockIt > 0.0) gotLocks = true;
+            // The lock value has to be scaled up when the global rig scales, so multiply
+            // it by the scale compensation plug value.
+            double lockIt = group.child(aParamWeight).asDouble();
+            lockVals.push_back(lockIt);
+            if (lockIt > 0.0) {
+                gotLocks = true;
+            }
 
-			double twistLockIt = group.child(aTwistWeight).asDouble();
-			twistLock.push_back(twistLockIt);
-			if (twistLockIt > 0.0) {
-				gotTwistLocks = true;
-			}
-			userTwist.push_back(group.child(aTwistValue).asDouble() * twistMultiplier);
+            double twistLockIt = group.child(aTwistWeight).asDouble();
+            twistLock.push_back(twistLockIt);
+            if (twistLockIt > 0.0) {
+                gotTwistLocks = true;
+            }
+            userTwist.push_back(group.child(aTwistValue).asDouble() * twistMultiplier);
 
-			double oriIt = group.child(aUseOrient).asDouble();
-			orientLock.push_back(oriIt);
-			if (oriIt > 0.0) gotOris = true;
+            double oriIt = group.child(aUseOrient).asDouble();
+            orientLock.push_back(oriIt);
+            if (oriIt > 0.0) {
+                gotOris = true;
+            }
 
-			if (i > 0) {
-				// Ignore the tangent data for the first vertex
-				// because they come *before* it.  I'm just using the same interface
-				// for conveninece here
-				auto itMat = MTransformationMatrix(group.child(aInTangent).asMatrix());
-				points.append(itMat.getTranslation(MSpace::kWorld));
-				itMat.getScale(sGet, MSpace::kObject);
-				scales.append(MPoint(sGet));
-				quats.push_back(itMat.rotation());
-			}
+            if (i > 0) {
+                // Ignore the tangent data for the first vertex
+                // because they come *before* it.  I'm just using the same interface
+                // for conveninece here
+                auto itMat = MTransformationMatrix(group.child(aInTangent).asMatrix());
+                points.append(itMat.getTranslation(MSpace::kWorld));
+                itMat.getScale(sGet, MSpace::kObject);
+                scales.append(MPoint(sGet));
+                quats.push_back(itMat.rotation());
+            }
 
-			auto cvMat = MTransformationMatrix(group.child(aControlVertex).asMatrix());
-			points.append(cvMat.getTranslation(MSpace::kWorld));
-			cvMat.getScale(sGet, MSpace::kObject);
-			scales.append(MPoint(sGet));
-			quats.push_back(cvMat.rotation());
+            auto cvMat = MTransformationMatrix(group.child(aControlVertex).asMatrix());
+            points.append(cvMat.getTranslation(MSpace::kWorld));
+            cvMat.getScale(sGet, MSpace::kObject);
+            scales.append(MPoint(sGet));
+            quats.push_back(cvMat.rotation());
 
-			auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
-			points.append(otMat.getTranslation(MSpace::kWorld));
-			otMat.getScale(sGet, MSpace::kObject);
-			scales.append(MPoint(sGet));
-			quats.push_back(otMat.rotation());
+            auto otMat = MTransformationMatrix(group.child(aOutTangent).asMatrix());
+            points.append(otMat.getTranslation(MSpace::kWorld));
+            otMat.getScale(sGet, MSpace::kObject);
+            scales.append(MPoint(sGet));
+            quats.push_back(otMat.rotation());
 
-			inputs.next();
-		}
+            inputs.next();
+        }
 
-		// Remove the last item from the group. It's the out tangent past the end
-		if (!quats.empty())
-			quats.pop_back();
+        // Remove the last item from the group. It's the out tangent past the end
+        if (!quats.empty()) {
+            quats.pop_back();
+        }
 
-		if (points.length() > 0)
-			points.remove(points.length() - 1);
+        if (points.length() > 0) {
+            points.remove(points.length() - 1);
+        }
 
-		if (scales.length() > 0)
-			scales.remove(scales.length() - 1);
+        if (scales.length() > 0) {
+            scales.remove(scales.length() - 1);
+        }
 
-		// With no locks, the solve is singular and returns NaN
-		// So make sure we always have some lock value
-		if (!gotLocks && !lockVals.empty())
-			lockVals[0] = 1.0;
+        // With no locks, the solve is singular and returns NaN
+        // So make sure we always have some lock value
+        if (!gotLocks && !lockVals.empty()) {
+            lockVals[0] = 1.0;
+        }
 
-		if (!gotOris && !orientLock.empty())
-			orientLock[0] = 1.0;
+        if (!gotOris && !orientLock.empty()) {
+            orientLock[0] = 1.0;
+        }
 
-		if (!gotTwistLocks && !twistLock.empty())
-			twistLock[0] = 1.0;
+        if (!gotTwistLocks && !twistLock.empty()) {
+            twistLock[0] = 1.0;
+        }
 
-		// Output Data Handles
-		MDataHandle storageH = data.outputValue(aOutputSpline, &status);
-		MCHECKERROR(status);
+        // Output Data Handles
+        MDataHandle storageH = data.outputValue(aOutputSpline, &status);
+        MCHECKERROR(status);
 
-		// Build output data object
-		TwistSplineData *outSplineData;
-		MFnPluginData fnDataCreator;
-		MTypeId tmpid(TwistSplineData::id);
-		fnDataCreator.create(tmpid, &status);
-		MCHECKERROR(status);
-		outSplineData = dynamic_cast<TwistSplineData*>(fnDataCreator.data(&status));
-		MCHECKERROR(status);
-		std::shared_ptr<TwistSplineT> outSpline = outSplineData->getSharedSpline();
+        // Build output data object
+        TwistSplineData *outSplineData;
+        MFnPluginData fnDataCreator;
+        MTypeId tmpid(TwistSplineData::id);
+        fnDataCreator.create(tmpid, &status);
+        MCHECKERROR(status);
+        outSplineData = dynamic_cast<TwistSplineData *>(fnDataCreator.data(&status));
+        MCHECKERROR(status);
+        std::shared_ptr<TwistSplineT> outSpline = outSplineData->getSharedSpline();
 
-		//if (points.length() != 0)
-			outSpline->setVerts(points, scales, quats, lockPositions, lockVals, userTwist, twistLock, orientLock);
+        // if (points.length() != 0)
+        outSpline->setVerts(
+            points, scales, quats, lockPositions, lockVals, userTwist, twistLock, orientLock
+        );
 
-		// Testing closest point
-		//outSpline->buildKDTree();
-		//auto cp = outSpline->getClosestPoint(MPoint());
+        // Testing closest point
+        // outSpline->buildKDTree();
+        // auto cp = outSpline->getClosestPoint(MPoint());
 
-		storageH.setMPxData(outSplineData);
-		data.setClean(aOutputSpline);
-	}
-	else if (plug == aNurbsData) {
-		MStatus status;
+        storageH.setMPxData(outSplineData);
+        data.setClean(aOutputSpline);
+    }
+    else if (plug == aNurbsData) {
+        MStatus status;
 
-		// Get the splines that need computing.
-		MDataHandle inHandle = data.inputValue(aOutputSpline);
-		MDataHandle outHandle = data.outputValue(aNurbsData);
+        // Get the splines that need computing.
+        MDataHandle inHandle = data.inputValue(aOutputSpline);
+        MDataHandle outHandle = data.outputValue(aNurbsData);
 
-		MPxData* pd = inHandle.asPluginData();
-		if (pd == nullptr) {
-			outHandle.setMObject(MObject::kNullObj);
-			return MS::kSuccess;
-		}
+        MPxData *pd = inHandle.asPluginData();
+        if (pd == nullptr) {
+            outHandle.setMObject(MObject::kNullObj);
+            return MS::kSuccess;
+        }
 
-		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
-		std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
-		if (spline == nullptr) {
-			outHandle.setMObject(MObject::kNullObj);
-			return MS::kSuccess;
-		}
+        auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
+        std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
+        if (spline == nullptr) {
+            outHandle.setMObject(MObject::kNullObj);
+            return MS::kSuccess;
+        }
 
-		// Construct the nurbs curve data.
-		unsigned degree = 3;
-		const MPointArray &cvs = spline->getVerts();
-		const std::vector<double> &remaps = spline->getRemap();
-		MDoubleArray knots(static_cast<unsigned>(remaps.size()) * 3, 0);
-		unsigned c = 0;
-		for (double p: remaps){
-			// set the value 3 times
-			knots[c++] = p;
-			knots[c++] = p;
-			knots[c++] = p;
-		}
+        // Construct the nurbs curve data.
+        unsigned degree = 3;
+        const MPointArray &cvs = spline->getVerts();
+        const std::vector<double> &remaps = spline->getRemap();
+        MDoubleArray knots(static_cast<unsigned>(remaps.size()) * 3, 0);
+        unsigned c = 0;
+        for (double p : remaps) {
+            // set the value 3 times
+            knots[c++] = p;
+            knots[c++] = p;
+            knots[c++] = p;
+        }
 
-		MFnNurbsCurveData curveData;
-		MObject curveDataObj = curveData.create();
-		MFnNurbsCurve curve;
-		curve.create(cvs, knots, degree, MFnNurbsCurve::kOpen, false, true,
-					 curveDataObj, &status);
-		MCHECKERROR(status);
+        MFnNurbsCurveData curveData;
+        MObject curveDataObj = curveData.create();
+        MFnNurbsCurve curve;
+        curve.create(cvs, knots, degree, MFnNurbsCurve::kOpen, false, true, curveDataObj, &status);
+        MCHECKERROR(status);
 
-		outHandle.setMObject(curveDataObj);
-		data.setClean(aNurbsData);
-	}
-	else if (plug == aSplineLength) {
-		// First, get the splines that need computing, and their weight.
-		MDataHandle inHandle = data.inputValue(aOutputSpline);
-		MDataHandle outHandle = data.outputValue(aSplineLength);
+        outHandle.setMObject(curveDataObj);
+        data.setClean(aNurbsData);
+    }
+    else if (plug == aSplineLength) {
+        // First, get the splines that need computing, and their weight.
+        MDataHandle inHandle = data.inputValue(aOutputSpline);
+        MDataHandle outHandle = data.outputValue(aSplineLength);
 
-		MPxData* pd = inHandle.asPluginData();
-		if (pd == nullptr) {
-			outHandle.setDouble(0.0);
-			return MS::kSuccess;
-		}
+        MPxData *pd = inHandle.asPluginData();
+        if (pd == nullptr) {
+            outHandle.setDouble(0.0);
+            return MS::kSuccess;
+        }
 
-		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
-		std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
+        auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
+        std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
 
-		if (spline == nullptr) {
-			outHandle.setDouble(0.0);
-			return MS::kSuccess;
-		}
-		outHandle.setDouble(spline->getTotalLength());
-		data.setClean(aSplineLength);
-	}
-	else if (plug == aGeometryChanging) {
-		MStatus status;
-		MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
-		MCHECKERROR(status);
-		boolHandle.setBool(true);
-		boolHandle.setClean();
-	}
+        if (spline == nullptr) {
+            outHandle.setDouble(0.0);
+            return MS::kSuccess;
+        }
+        outHandle.setDouble(spline->getTotalLength());
+        data.setClean(aSplineLength);
+    }
+    else if (plug == aGeometryChanging) {
+        MStatus status;
+        MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
+        MCHECKERROR(status);
+        boolHandle.setBool(true);
+        boolHandle.setClean();
+    }
 
-	else if (plug == aMinParam || plug == aMaxParam) {
-		// First, get the splines that need computing, and their weight.
-		MDataHandle inHandle = data.inputValue(aOutputSpline);
-		MDataHandle minOutHandle = data.outputValue(aMinParam);
-		MDataHandle maxOutHandle = data.outputValue(aMaxParam);
+    else if (plug == aMinParam || plug == aMaxParam) {
+        // First, get the splines that need computing, and their weight.
+        MDataHandle inHandle = data.inputValue(aOutputSpline);
+        MDataHandle minOutHandle = data.outputValue(aMinParam);
+        MDataHandle maxOutHandle = data.outputValue(aMaxParam);
 
-		MPxData* pd = inHandle.asPluginData();
-		if (pd == nullptr) {
-			minOutHandle.setDouble(0.0);
-			maxOutHandle.setDouble(0.0);
-			return MS::kSuccess;
-		}
+        MPxData *pd = inHandle.asPluginData();
+        if (pd == nullptr) {
+            minOutHandle.setDouble(0.0);
+            maxOutHandle.setDouble(0.0);
+            return MS::kSuccess;
+        }
 
-		auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
-		std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
+        auto inSplineData = dynamic_cast<TwistSplineData *>(pd);
+        std::shared_ptr<TwistSplineT> spline = inSplineData->getSharedSpline();
 
-		if (spline == nullptr) {
-			minOutHandle.setDouble(0.0);
-			maxOutHandle.setDouble(0.0);
-			return MS::kSuccess;
-		}
+        if (spline == nullptr) {
+            minOutHandle.setDouble(0.0);
+            maxOutHandle.setDouble(0.0);
+            return MS::kSuccess;
+        }
 
-		const auto &remap = spline->getRemap();
-		if (remap.empty()){
-			minOutHandle.setDouble(0.0);
-			maxOutHandle.setDouble(0.0);
-			return MS::kSuccess;
-		}
+        const auto &remap = spline->getRemap();
+        if (remap.empty()) {
+            minOutHandle.setDouble(0.0);
+            maxOutHandle.setDouble(0.0);
+            return MS::kSuccess;
+        }
 
-		minOutHandle.setDouble(remap[0]);
-		maxOutHandle.setDouble(remap[remap.size() - 1]);
-		data.setClean(aMinParam);
-		data.setClean(aMaxParam);
-	}
+        minOutHandle.setDouble(remap[0]);
+        maxOutHandle.setDouble(remap[remap.size() - 1]);
+        data.setClean(aMinParam);
+        data.setClean(aMaxParam);
+    }
 
-	else {
-		return MS::kUnknownParameter;
-	}
-	return MS::kSuccess;
+    else {
+        return MS::kUnknownParameter;
+    }
+    return MS::kSuccess;
 }
 
 /*
-	Technique 1: Hack the EM to force evaluate and cache attributes.
-	To improve performance, Evaluation Manager aggressively skips evaluation of
-	attributes which are not connected to other nodes. In cases where an external
-	user of DG data (in this case the renderer) needs to read unconnected values
-	from a node during or after EM evaluation, we need to take extra steps to
-	ensure the data is evaluated by the EM (and cached). The most notable rules
-	used by the EM for skipping evaluation are:
-		1. Output attributes without output-connections are not computed in EM
-		(and are not eligible for caching).
-		2. Input attributes are never cached in Evaluation Cache.
+        Technique 1: Hack the EM to force evaluate and cache attributes.
+        To improve performance, Evaluation Manager aggressively skips evaluation of
+        attributes which are not connected to other nodes. In cases where an external
+        user of DG data (in this case the renderer) needs to read unconnected values
+        from a node during or after EM evaluation, we need to take extra steps to
+        ensure the data is evaluated by the EM (and cached). The most notable rules
+        used by the EM for skipping evaluation are:
+                1. Output attributes without output-connections are not computed in EM
+                (and are not eligible for caching).
+                2. Input attributes are never cached in Evaluation Cache.
 
-	In TwistSplineNode, attribute "geometryChanging" is virtually connected to the
-	renderer. But EM does not understand these "virtual connection", and skips
-	evaluation and caching for them. The current workaround are:
-		1. To bypass rule 2, we made them a passing-through output attributes :
-		inputSize->outputSize
-		2. To bypass rule 1, repeat the affect relationship in setDependentsDirty().
-			[*]
-			[*] Note, this is a trick that relies on some internal hack to EM.
-				Maya may provide better API for this in future updates.
-				When proper force evaluation API is come, you won't need to override
-				this method.
+        In TwistSplineNode, attribute "geometryChanging" is virtually connected to the
+        renderer. But EM does not understand these "virtual connection", and skips
+        evaluation and caching for them. The current workaround are:
+                1. To bypass rule 2, we made them a passing-through output attributes :
+                inputSize->outputSize
+                2. To bypass rule 1, repeat the affect relationship in setDependentsDirty().
+                        [*]
+                        [*] Note, this is a trick that relies on some internal hack to EM.
+                                Maya may provide better API for this in future updates.
+                                When proper force evaluation API is come, you won't need to override
+                                this method.
 */
-MStatus TwistSplineNode::setDependentsDirty(const MPlug& plug,
-											MPlugArray& plugArray) {
-	// Repeating the affect relationship we have specified.
-	// This method just mean to trick EM.
-	// No need to do this outside of EM graph construction (for the sake of
-	// performance)
-	if (MEvaluationManager::graphConstructionActive()) {
-		if (plug == aInTangent || plug == aOutTangent ||
-			plug == aControlVertex || plug == aMaxVertices ||
-			plug == aParamValue || plug == aParamWeight ||
-			plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient ||
-			plug == aScaleCompensation || plug == aTwistMultiplier) {
-			MObject thisNode = thisMObject();
-			MPlug outputSplinePlug(thisNode, aOutputSpline);
-			MPlug nurbsDataPlug(thisNode, aNurbsData);
-			MPlug geometryChangingPlug(thisNode, aGeometryChanging);
-			plugArray.append(outputSplinePlug);
-			plugArray.append(nurbsDataPlug);
-			plugArray.append(geometryChangingPlug);
-		}
-	}
-	// Try not set any data or attribute value in this method
-	// Because EM's parallel evaluation will not call this method at all
-	// A widely used *bad* approach is to write "aGeometryChanged=true" when
-	// some attribute changed. Use Technique 1.1 to avoid this.
-	return MStatus::kSuccess;
+MStatus TwistSplineNode::setDependentsDirty(const MPlug &plug, MPlugArray &plugArray)
+{
+    // Repeating the affect relationship we have specified.
+    // This method just mean to trick EM.
+    // No need to do this outside of EM graph construction (for the sake of
+    // performance)
+    if (MEvaluationManager::graphConstructionActive()) {
+        if (plug == aInTangent || plug == aOutTangent || plug == aControlVertex ||
+            plug == aMaxVertices || plug == aParamValue || plug == aParamWeight ||
+            plug == aTwistValue || plug == aTwistWeight || plug == aUseOrient ||
+            plug == aScaleCompensation || plug == aTwistMultiplier) {
+            MObject thisNode = thisMObject();
+            MPlug outputSplinePlug(thisNode, aOutputSpline);
+            MPlug nurbsDataPlug(thisNode, aNurbsData);
+            MPlug geometryChangingPlug(thisNode, aGeometryChanging);
+            plugArray.append(outputSplinePlug);
+            plugArray.append(nurbsDataPlug);
+            plugArray.append(geometryChangingPlug);
+        }
+    }
+    // Try not set any data or attribute value in this method
+    // Because EM's parallel evaluation will not call this method at all
+    // A widely used *bad* approach is to write "aGeometryChanged=true" when
+    // some attribute changed. Use Technique 1.1 to avoid this.
+    return MStatus::kSuccess;
 }
 
-MStatus TwistSplineNode::postEvaluation(const MDGContext& context,
-										const MEvaluationNode& evaluationNode,
-										PostEvaluationType evalType) {
-	// For cache restoration only.
-	// This method is responsible for fixing the 'geometryChanging' flag in
-	// cache restore frames Because in cache store phase, PopulateGeometry &
-	// Viewport-Caching happens before Evaluation-Cache store The value of
-	// 'geometryChanging' will always be set to 'false' (it is already used by
-	// render) Thus, we have to fix the geometryChanging attribute to the
-	// correct value.
-	MStatus status;
-	// kEvaluateDirectly indicates we are restoring from cache.
-	if (evalType == PostEvaluationEnum::kEvaluatedDirectly &&
-		evaluationNode.dirtyPlugExists(aGeometryChanging, &status) && status) {
-		MDataBlock data = forceCache();
-		MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
-		if (status != MStatus::kSuccess) return status;
-		boolHandle.setBool(true);
-		boolHandle.setClean();
-	}
-	return MPxLocatorNode::postEvaluation(context, evaluationNode, evalType);
+MStatus TwistSplineNode::postEvaluation(
+    const MDGContext &context, const MEvaluationNode &evaluationNode, PostEvaluationType evalType
+)
+{
+    // For cache restoration only.
+    // This method is responsible for fixing the 'geometryChanging' flag in
+    // cache restore frames Because in cache store phase, PopulateGeometry &
+    // Viewport-Caching happens before Evaluation-Cache store The value of
+    // 'geometryChanging' will always be set to 'false' (it is already used by
+    // render) Thus, we have to fix the geometryChanging attribute to the
+    // correct value.
+    MStatus status;
+    // kEvaluateDirectly indicates we are restoring from cache.
+    if (evalType == PostEvaluationEnum::kEvaluatedDirectly &&
+        evaluationNode.dirtyPlugExists(aGeometryChanging, &status) && status) {
+        MDataBlock data = forceCache();
+        MDataHandle boolHandle = data.outputValue(aGeometryChanging, &status);
+        if (status != MStatus::kSuccess) {
+            return status;
+        }
+        boolHandle.setBool(true);
+        boolHandle.setClean();
+    }
+    return MPxLocatorNode::postEvaluation(context, evaluationNode, evalType);
 }
 
-void TwistSplineNode::getCacheSetup(const MEvaluationNode& evalNode,
-									MNodeCacheDisablingInfo& disablingInfo,
-									MNodeCacheSetupInfo& cacheSetupInfo,
-									MObjectArray& monitoredAttributes) const {
-	MPxLocatorNode::getCacheSetup(evalNode, disablingInfo, cacheSetupInfo,
-								  monitoredAttributes);
-	assert(!disablingInfo.getCacheDisabled());
-	cacheSetupInfo.setPreference(MNodeCacheSetupInfo::kWantToCacheByDefault,
-								 true);
+void TwistSplineNode::getCacheSetup(
+    const MEvaluationNode &evalNode, MNodeCacheDisablingInfo &disablingInfo,
+    MNodeCacheSetupInfo &cacheSetupInfo, MObjectArray &monitoredAttributes
+) const
+{
+    MPxLocatorNode::getCacheSetup(evalNode, disablingInfo, cacheSetupInfo, monitoredAttributes);
+    assert(!disablingInfo.getCacheDisabled());
+    cacheSetupInfo.setPreference(MNodeCacheSetupInfo::kWantToCacheByDefault, true);
 }
 
-void* TwistSplineNode::creator() { return new TwistSplineNode(); }
+void *TwistSplineNode::creator() { return new TwistSplineNode(); }
 
 // Must be called after MPxGeometryOverride::updateDG()
 // Typically used by MPxGeometryOverride::requiresGeometryUpdate()
-bool TwistSplineNode::isGeometryChanging() const {
-	MDataBlock block = const_cast<TwistSplineNode*>(this)->forceCache();
-	// Use inputValue() to trigger evaluation here
-	// Because MPxGeometryOverride::requiresGeometryUpdate() can be called
-	// outside of MPxGeometryOverride::initialize()/updateDG() This evaluation
-	// is safe because this attribute cannot be connected And thus cannot reach
-	// other nodes
-	return block.inputValue(TwistSplineNode::aGeometryChanging).asBool();
+bool TwistSplineNode::isGeometryChanging() const
+{
+    MDataBlock block = const_cast<TwistSplineNode *>(this)->forceCache();
+    // Use inputValue() to trigger evaluation here
+    // Because MPxGeometryOverride::requiresGeometryUpdate() can be called
+    // outside of MPxGeometryOverride::initialize()/updateDG() This evaluation
+    // is safe because this attribute cannot be connected And thus cannot reach
+    // other nodes
+    return block.inputValue(TwistSplineNode::aGeometryChanging).asBool();
 }
 
-void TwistSplineNode::postConstructor() {
-	MFnDependencyNode nodeFn(thisMObject());
-	nodeFn.setName("twistSplineShape#");
-	nodeFn.setIcon("twistSpline.png");
+void TwistSplineNode::postConstructor()
+{
+    MFnDependencyNode nodeFn(thisMObject());
+    nodeFn.setName("twistSplineShape#");
+    nodeFn.setIcon("twistSpline.png");
 }
 
 // Workload for MPxGeometryOverride::updateDG()
 // Updating all the attributes needed by the renderer
 // Ensure these attributes can be accessed by outputValue() safely later
-void TwistSplineNode::updateRenderAttributes() {
-	MDataBlock datablock = forceCache();
-	datablock.inputValue(TwistSplineNode::aGeometryChanging);
-	datablock.inputValue(TwistSplineNode::aDebugDisplay);
-	datablock.inputValue(TwistSplineNode::aDebugScale);
-	datablock.inputValue(TwistSplineNode::aOutputSpline);
+void TwistSplineNode::updateRenderAttributes()
+{
+    MDataBlock datablock = forceCache();
+    datablock.inputValue(TwistSplineNode::aGeometryChanging);
+    datablock.inputValue(TwistSplineNode::aDebugDisplay);
+    datablock.inputValue(TwistSplineNode::aDebugScale);
+    datablock.inputValue(TwistSplineNode::aOutputSpline);
 }
 
 // Should only be called from MPxGeometryOverride::populateGeometry()
 // Returns the parameters required to update geometry
 // Set "TwistSplineNode::geometryChanging" to "false" to avoid duplicate update
 // [[ensure : isGeometryChanging() == false]]
-void TwistSplineNode::updatingGeometry() {
-	MDataBlock block = const_cast<TwistSplineNode*>(this)->forceCache();
+void TwistSplineNode::updatingGeometry()
+{
+    MDataBlock block = const_cast<TwistSplineNode *>(this)->forceCache();
 
-	// Reset the geometryChanging attribute to false so that we do not update
-	// the geometry multiple times
-	block.outputValue(TwistSplineNode::aGeometryChanging).set(false);
+    // Reset the geometryChanging attribute to false so that we do not update
+    // the geometry multiple times
+    block.outputValue(TwistSplineNode::aGeometryChanging).set(false);
 }

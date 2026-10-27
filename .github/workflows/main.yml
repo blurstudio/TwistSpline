@@ -20,7 +20,7 @@ jobs:
   compile_plugin:
     strategy:
       matrix:
-        maya: [2022, 2023, 2024, 2025]
+        maya: [2022, 2023, 2024, 2025, 2026, 2027]
         os: [macos-13, macos-latest, ubuntu-latest, windows-latest]
         include: 
           # Add the maya update versions here
@@ -31,7 +31,11 @@ jobs:
           - maya: 2024
             update: 2
           - maya: 2025
-            update: 1
+            update: 3
+          - maya: 2026
+            update: 2
+          - maya: 2027
+            update: 2
 
         # cross-compiling is annoying so just fall back to macos-13
         exclude: 
@@ -40,15 +44,23 @@ jobs:
           - os: macos-latest
             maya: 2023
           - os: macos-13
+            maya: 2022
+          - os: macos-13
+            maya: 2023
+          - os: macos-13
             maya: 2024
           - os: macos-13
             maya: 2025
+          - os: macos-13
+            maya: 2026
+          - os: macos-13
+            maya: 2027
 
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: git fetch --force --tags origin
 
       - name: Get Maya Devkit
@@ -61,6 +73,7 @@ jobs:
       - name: Build
         uses: blurstudio/mayaModuleActions/mesonBuild@v1
         with:
+          meson-version: 1.7.0
           setup-args: >
             -Dmaya:maya_version=${{ matrix.maya }}
             -Dmaya:maya_devkit_base=${{ steps.get-devkit.outputs.devkit-path }}
@@ -68,7 +81,7 @@ jobs:
             --backend ninja
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ runner.os }}-${{ matrix.maya }}-plugin
           path: build/*.${{ steps.get-devkit.outputs.plugin-ext }}
@@ -79,11 +92,11 @@ jobs:
     needs: compile_plugin
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: git fetch --force --tags origin
       - name: 'Get Previous tag'
         id: previoustag
-        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+        uses: "WyriHaximus/github-action-get-previous-tag@v2"
         with:
           fallback: 0.0.1
 
@@ -96,7 +109,7 @@ jobs:
 
       - name: Upload distribution
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false

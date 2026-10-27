@@ -1,6 +1,6 @@
 setlocal
 
-SET MAYA_VERSION=2027
+SET MAYA_VERSION=2026
 REM "vs" "ninja"
 REM use VS for the debugger, otherwise use NINJA
 REM Until I figure out how to debug using nvim

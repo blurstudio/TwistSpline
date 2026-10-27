@@ -24,60 +24,69 @@ SOFTWARE.
 
 #pragma once
 
-
 // To make my choice of abstraction work, I have to write wrappers for the template abstractions
 template <typename PointArray, typename IndexType = unsigned>
-inline void resize(PointArray &a, IndexType size) {
-	a.resize(size);
+inline void resize(PointArray &a, IndexType size)
+{
+    a.resize(size);
 }
 
 template <typename PointArray, typename IndexType = unsigned>
-inline IndexType size(const PointArray &a) {
-	return static_cast<IndexType>(a.size());
+inline IndexType size(const PointArray &a)
+{
+    return static_cast<IndexType>(a.size());
 }
 
 template <typename Vector, typename Float = double>
-inline Float dot(const Vector &a, const Vector &b) {
-	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+inline Float dot(const Vector &a, const Vector &b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-template <typename Vector, typename Float = double>
-inline Float length(const Vector &a) {
-	return sqrt(dot<Vector, Float>(a, a));
+template <typename Vector, typename Float = double> inline Float length(const Vector &a)
+{
+    return sqrt(dot<Vector, Float>(a, a));
 }
 
-template <typename Vector, typename Float = double>
-inline Vector normalized(const Vector &a) {
-	return a / length<Vector, Float>(a);
+template <typename Vector, typename Float = double> inline Vector normalized(const Vector &a)
+{
+    return a / length<Vector, Float>(a);
 }
 
-template <typename Vector>
-inline Vector cross(const Vector &a, const Vector &b) {
-	return Vector((a[1] * b[2] - a[2] * b[1]), (a[2] * b[0] - a[0] * b[2]), (a[0] * b[1] - a[1] * b[0]));
+template <typename Vector> inline Vector cross(const Vector &a, const Vector &b)
+{
+    return Vector(
+        (a[1] * b[2] - a[2] * b[1]), (a[2] * b[0] - a[0] * b[2]), (a[0] * b[1] - a[1] * b[0])
+    );
 }
 
 /// Like projection except you get the perpendicular component of the vector
-template <typename Vector, typename Float=double>
-inline Vector reject(const Vector &onto, const Vector &n) {
-	return normalized<Vector, Float>(n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto));
+template <typename Vector, typename Float = double>
+inline Vector reject(const Vector &onto, const Vector &n)
+{
+    return normalized<Vector, Float>(
+        n - ((dot<Vector, Float>(n, onto) / dot<Vector, Float>(onto, onto)) * onto)
+    );
 }
 
-// The generic quaternion helpers assume scalar-first (w, x, y, z) ordering for operator[] and the 4-arg constructor
-// Types that use (x, y, z, w) ordering, like MQuaternion, must specialize rotateBy (see twistSpline_maya.h)
-template <typename Quat>
-inline Quat qmult(const Quat &q, const Quat &r){
-	return Quat(r[0]*q[0]-r[1]*q[1]-r[2]*q[2]-r[3]*q[3],
-		r[0]*q[1]+r[1]*q[0]-r[2]*q[3]+r[3]*q[2],
-		r[0]*q[2]+r[1]*q[3]+r[2]*q[0]-r[3]*q[1],
-		r[0]*q[3]-r[1]*q[2]+r[2]*q[1]+r[3]*q[0]);
+// The generic quaternion helpers assume scalar-first (w, x, y, z) ordering for operator[] and the
+// 4-arg constructor Types that use (x, y, z, w) ordering, like MQuaternion, must specialize
+// rotateBy (see twistSpline_maya.h)
+template <typename Quat> inline Quat qmult(const Quat &q, const Quat &r)
+{
+    return Quat(
+        r[0] * q[0] - r[1] * q[1] - r[2] * q[2] - r[3] * q[3],
+        r[0] * q[1] + r[1] * q[0] - r[2] * q[3] + r[3] * q[2],
+        r[0] * q[2] + r[1] * q[3] + r[2] * q[0] - r[3] * q[1],
+        r[0] * q[3] - r[1] * q[2] + r[2] * q[1] + r[3] * q[0]
+    );
 }
 
 template <typename Vector, typename Quat>
-inline Vector rotateBy(const Vector &vec, const Quat &quat){
-	Quat r(0.0, vec[0], vec[1], vec[2]);
-	Quat c(quat[0], -quat[1], -quat[2], -quat[3]);
-	Quat ret = qmult(qmult(quat, r), c);
-	return Vector(ret[1], ret[2], ret[3]);
+inline Vector rotateBy(const Vector &vec, const Quat &quat)
+{
+    Quat r(0.0, vec[0], vec[1], vec[2]);
+    Quat c(quat[0], -quat[1], -quat[2], -quat[3]);
+    Quat ret = qmult(qmult(quat, r), c);
+    return Vector(ret[1], ret[2], ret[3]);
 }
-
-

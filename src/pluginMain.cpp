@@ -22,112 +22,126 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "twistSplineNode.h"
-#include "twistSplineData.h"
-#include "riderConstraint.h"
-#include "twistTangentNode.h"
-#include "twistMultiTangentNode.h"
-#include "drawOverride.h"
 #include <maya/MFnPlugin.h>
+
+#include "drawOverride.h"
+#include "riderConstraint.h"
+#include "twistMultiTangentNode.h"
+#include "twistSplineData.h"
+#include "twistSplineNode.h"
+#include "twistTangentNode.h"
 #include "version.h"
 
-MStatus initializePlugin( MObject obj ) {
-	MStatus   status;
-	MFnPlugin plugin( obj, "BlurStudio", VERSION_STRING, "Any");
+MStatus initializePlugin(MObject obj)
+{
+    MStatus status;
+    MFnPlugin plugin(obj, "BlurStudio", VERSION_STRING, "Any");
 
-	status = plugin.registerData("twistSplineData", TwistSplineData::id, TwistSplineData::creator);
-	if (!status) {
-		status.perror("Failed to register twistSplineData");
-		return status;
-	}
+    status = plugin.registerData("twistSplineData", TwistSplineData::id, TwistSplineData::creator);
+    if (!status) {
+        status.perror("Failed to register twistSplineData");
+        return status;
+    }
 
-	status = plugin.registerNode(
-		"twistSpline",
-		TwistSplineNode::id,
-		&TwistSplineNode::creator,
-		&TwistSplineNode::initialize,
-		MPxNode::kLocatorNode,
-		&TwistSplineNode::drawDbClassification
-	);
+    status = plugin.registerNode(
+        "twistSpline", TwistSplineNode::id, &TwistSplineNode::creator, &TwistSplineNode::initialize,
+        MPxNode::kLocatorNode, &TwistSplineNode::drawDbClassification
+    );
 
-	if (!status) {
-		status.perror("Failed to register twistSplineNode");
-		return status;
-	}
+    if (!status) {
+        status.perror("Failed to register twistSplineNode");
+        return status;
+    }
 
-	status = plugin.registerNode(
-		"riderConstraint",
-		riderConstraint::id,
-		riderConstraint::creator,
-		riderConstraint::initialize
-	);
-	if (!status) {
-		status.perror("Failed to register riderConstraint Node");
-		return status;
-	}
+    status = plugin.registerNode(
+        "riderConstraint", riderConstraint::id, riderConstraint::creator,
+        riderConstraint::initialize
+    );
+    if (!status) {
+        status.perror("Failed to register riderConstraint Node");
+        return status;
+    }
 
-	status = plugin.registerNode(
-		"twistTangent",
-		TwistTangentNode::id,
-		TwistTangentNode::creator,
-		TwistTangentNode::initialize
-	);
-	if (!status) {
-		status.perror("Failed to register TwistTangent Node");
-		return status;
-	}
+    status = plugin.registerNode(
+        "twistTangent", TwistTangentNode::id, TwistTangentNode::creator,
+        TwistTangentNode::initialize
+    );
+    if (!status) {
+        status.perror("Failed to register TwistTangent Node");
+        return status;
+    }
 
-	status = plugin.registerNode(
-		"twistMultiTangent",
-		TwistMultiTangentNode::id,
-		TwistMultiTangentNode::creator,
-		TwistMultiTangentNode::initialize
-	);
-	if (!status) {
-		status.perror("Failed to register TwistMultiTangent Node");
-		return status;
-	}
+    status = plugin.registerNode(
+        "twistMultiTangent", TwistMultiTangentNode::id, TwistMultiTangentNode::creator,
+        TwistMultiTangentNode::initialize
+    );
+    if (!status) {
+        status.perror("Failed to register TwistMultiTangent Node");
+        return status;
+    }
 
-	status = MHWRender::MDrawRegistry::registerGeometryOverrideCreator(
-		TwistSplineNode::drawDbClassification,
-		TwistSplineNode::drawRegistrantId,
-		TwistSplineGeometryOverride::Creator
-	);
-	if (!status) {
-		status.perror("Faild to register TwistSpline GeometryOverrideCreator");
-		return status;
-	}
-	return status;
+    status = MHWRender::MDrawRegistry::registerGeometryOverrideCreator(
+        TwistSplineNode::drawDbClassification, TwistSplineNode::drawRegistrantId,
+        TwistSplineGeometryOverride::Creator
+    );
+    if (!status) {
+        status.perror("Faild to register TwistSpline GeometryOverrideCreator");
+        return status;
+    }
+    return status;
 }
 
-MStatus uninitializePlugin(MObject obj) {
-	MStatus   nodeStat, dataStat, drawStat, riderStat, tangentStat, mtangentStat;
-	MFnPlugin plugin(obj);
+MStatus uninitializePlugin(MObject obj)
+{
+    MStatus nodeStat, dataStat, drawStat, riderStat, tangentStat, mtangentStat;
+    MFnPlugin plugin(obj);
 
-	dataStat = plugin.deregisterData(TwistSplineData::id);
-	if (!dataStat) dataStat.perror("Failed to de-register twistSplineData");
+    dataStat = plugin.deregisterData(TwistSplineData::id);
+    if (!dataStat) {
+        dataStat.perror("Failed to de-register twistSplineData");
+    }
 
-	nodeStat = plugin.deregisterNode(TwistSplineNode::id);
-	if (!nodeStat) nodeStat.perror("Failed to de-register twistSplineNode");
+    nodeStat = plugin.deregisterNode(TwistSplineNode::id);
+    if (!nodeStat) {
+        nodeStat.perror("Failed to de-register twistSplineNode");
+    }
 
-	riderStat = plugin.deregisterNode(riderConstraint::id);
-	if (!riderStat) nodeStat.perror("Failed to de-register riderConstraint Node");
+    riderStat = plugin.deregisterNode(riderConstraint::id);
+    if (!riderStat) {
+        nodeStat.perror("Failed to de-register riderConstraint Node");
+    }
 
-	tangentStat = plugin.deregisterNode(TwistTangentNode::id);
-	if (!tangentStat) nodeStat.perror("Failed to de-register twistTangent Node");
+    tangentStat = plugin.deregisterNode(TwistTangentNode::id);
+    if (!tangentStat) {
+        nodeStat.perror("Failed to de-register twistTangent Node");
+    }
 
-	mtangentStat = plugin.deregisterNode(TwistMultiTangentNode::id);
-	if (!mtangentStat) nodeStat.perror("Failed to de-register twistMultiTangent Node");
+    mtangentStat = plugin.deregisterNode(TwistMultiTangentNode::id);
+    if (!mtangentStat) {
+        nodeStat.perror("Failed to de-register twistMultiTangent Node");
+    }
 
-	drawStat = MDrawRegistry::deregisterGeometryOverrideCreator(
-		TwistSplineNode::drawDbClassification,
-		TwistSplineNode::drawRegistrantId);
-	if (!drawStat) drawStat.perror("deregisterGeometryOverrideCreator");
+    drawStat = MDrawRegistry::deregisterGeometryOverrideCreator(
+        TwistSplineNode::drawDbClassification, TwistSplineNode::drawRegistrantId
+    );
+    if (!drawStat) {
+        drawStat.perror("deregisterGeometryOverrideCreator");
+    }
 
-	if (!nodeStat) return nodeStat;
-	if (!dataStat) return dataStat;
-	if (!riderStat) return riderStat;
-	if (!tangentStat) return tangentStat;
-	if (!mtangentStat) return mtangentStat;
-	return drawStat;
+    if (!nodeStat) {
+        return nodeStat;
+    }
+    if (!dataStat) {
+        return dataStat;
+    }
+    if (!riderStat) {
+        return riderStat;
+    }
+    if (!tangentStat) {
+        return tangentStat;
+    }
+    if (!mtangentStat) {
+        return mtangentStat;
+    }
+    return drawStat;
 }

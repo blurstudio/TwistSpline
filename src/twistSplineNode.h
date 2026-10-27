@@ -24,90 +24,89 @@ SOFTWARE.
 
 #pragma once
 
-#include <vector>
-
-#include <maya/MPxLocatorNode.h>
+#include <maya/MDrawContext.h>
+#include <maya/MDrawRegistry.h>
+#include <maya/MEvaluationNode.h>
+#include <maya/MEventMessage.h>
+#include <maya/MFnDependencyNode.h>
+#include <maya/MFnMessageAttribute.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MFnStringData.h>
 #include <maya/MFnTypedAttribute.h>
-#include <maya/MTypeId.h>
-#include <maya/MVector.h>
-#include <maya/MEvaluationNode.h>
-#include <maya/MFnMessageAttribute.h>
-
-#include <maya/MDrawRegistry.h>
-#include <maya/MPxDrawOverride.h>
-#include <maya/MUserData.h>
-#include <maya/MDrawContext.h>
-#include <maya/MHWGeometryUtilities.h>
 #include <maya/MGlobal.h>
-#include <maya/MEventMessage.h>
-#include <maya/MFnDependencyNode.h>
+#include <maya/MHWGeometryUtilities.h>
+#include <maya/MPxDrawOverride.h>
+#include <maya/MPxLocatorNode.h>
+#include <maya/MTypeId.h>
+#include <maya/MUserData.h>
+#include <maya/MVector.h>
+
+#include <vector>
 
 #include "twistSpline.h"
 #include "twistSplineData.h"
 
 static constexpr const char gPluginNodeMessagePrefix[] = "TwistSpline: ";
 
-class TwistSplineNode : public MPxLocatorNode
-{
-public:
-	TwistSplineNode();
-	virtual ~TwistSplineNode();
+class TwistSplineNode : public MPxLocatorNode {
+  public:
+    TwistSplineNode();
+    virtual ~TwistSplineNode();
 
-	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
-	MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray) override;
-	MStatus postEvaluation(const MDGContext& context,
-						   const MEvaluationNode& evaluationNode,
-						   PostEvaluationType evalType) override;
-	void getCacheSetup(const MEvaluationNode& evalNode,
-					   MNodeCacheDisablingInfo& disablingInfo,
-					   MNodeCacheSetupInfo& cacheSetupInfo,
-					   MObjectArray& monitoredAttributes) const override;
-	void postConstructor() override;
-	static void* creator();
-	static MStatus initialize();
-	virtual bool isBounded() const { return true; }
-	virtual MBoundingBox boundingBox() const;
-	std::shared_ptr<TwistSplineT> getSplineData() const;
-	void getDebugDraw(bool &oDraw, double &oScale) const;
-	void getSplineDraw(bool &oDraw) const;
+    virtual MStatus compute(const MPlug &plug, MDataBlock &data);
+    MStatus setDependentsDirty(const MPlug &plug, MPlugArray &plugArray) override;
+    MStatus postEvaluation(
+        const MDGContext &context, const MEvaluationNode &evaluationNode,
+        PostEvaluationType evalType
+    ) override;
+    void getCacheSetup(
+        const MEvaluationNode &evalNode, MNodeCacheDisablingInfo &disablingInfo,
+        MNodeCacheSetupInfo &cacheSetupInfo, MObjectArray &monitoredAttributes
+    ) const override;
+    void postConstructor() override;
+    static void *creator();
+    static MStatus initialize();
+    virtual bool isBounded() const { return true; }
+    virtual MBoundingBox boundingBox() const;
+    std::shared_ptr<TwistSplineT> getSplineData() const;
+    void getDebugDraw(bool &oDraw, double &oScale) const;
+    void getSplineDraw(bool &oDraw) const;
 
-	// Methods for the renderer to call
-	bool isGeometryChanging() const;
-	void updateRenderAttributes();
-	void updatingGeometry();
+    // Methods for the renderer to call
+    bool isGeometryChanging() const;
+    void updateRenderAttributes();
+    void updatingGeometry();
 
-public:
-	static MObject aOutputSpline;
-	static MObject aSplineLength;
-	static MObject aMinParam;
-	static MObject aMaxParam;
-	static MObject aMaxVertices;
-	static MObject aTwistMultiplier;
+  public:
+    static MObject aOutputSpline;
+    static MObject aSplineLength;
+    static MObject aMinParam;
+    static MObject aMaxParam;
+    static MObject aMaxVertices;
+    static MObject aTwistMultiplier;
 
-	// NURBS curve output data
-	static MObject aNurbsData;
+    // NURBS curve output data
+    static MObject aNurbsData;
 
-	// array
-	static MObject aVertexData;
-		// array children
-		static MObject aInTangent;
-		static MObject aOutTangent;
-		static MObject aControlVertex;
-		static MObject aParamValue;
-		static MObject aParamWeight;
-		static MObject aTwistValue;
-		static MObject aTwistWeight;
-		static MObject aUseOrient;
+    // array
+    static MObject aVertexData;
+    // array children
+    static MObject aInTangent;
+    static MObject aOutTangent;
+    static MObject aControlVertex;
+    static MObject aParamValue;
+    static MObject aParamWeight;
+    static MObject aTwistValue;
+    static MObject aTwistWeight;
+    static MObject aUseOrient;
 
-	static MObject aGeometryChanging;
-	static MObject aScaleCompensation;
-	static MObject aSplineDisplay;
-	static MObject aDebugDisplay;
-	static MObject aDebugScale;
+    static MObject aGeometryChanging;
+    static MObject aScaleCompensation;
+    static MObject aSplineDisplay;
+    static MObject aDebugDisplay;
+    static MObject aDebugScale;
 
-	static MTypeId id;
-	static MString drawDbClassification;
-	static MString drawRegistrantId;
+    static MTypeId id;
+    static MString drawDbClassification;
+    static MString drawRegistrantId;
 };

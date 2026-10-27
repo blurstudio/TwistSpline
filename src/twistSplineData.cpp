@@ -23,64 +23,49 @@ SOFTWARE.
 */
 
 #include "twistSplineData.h"
+
 #include "twistSpline.h"
 
 const MTypeId TwistSplineData::id(0x001226FB);
 const MString TwistSplineData::typeName("TwistSplineData");
 
-void* TwistSplineData::creator(){
-	return new TwistSplineData;
-}
+void *TwistSplineData::creator() { return new TwistSplineData; }
 
-TwistSplineData::TwistSplineData()
-	: _twistSpline(std::make_unique<TwistSplineT>())
+TwistSplineData::TwistSplineData() : _twistSpline(std::make_unique<TwistSplineT>()) {}
+
+TwistSplineData::~TwistSplineData() {}
+
+void TwistSplineData::copy(const MPxData &other)
 {
+    if (other.typeId() == TwistSplineData::id) {
+        const TwistSplineData *otherData = static_cast<const TwistSplineData *>(&other);
+        _twistSpline = std::make_shared<TwistSplineT>(otherData->getSharedSpline());
+    }
+    else {
+        // we need to convert to the other type based on its iff Tag
+        cerr << "wrong data format!" << endl;
+    }
+    return;
 }
 
-TwistSplineData::~TwistSplineData() {
+const std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline() const
+{
+    return _twistSpline;
 }
 
-void TwistSplineData::copy(const MPxData& other) {
-	if (other.typeId() == TwistSplineData::id) {
-		const TwistSplineData* otherData = static_cast<const TwistSplineData*>(&other);
-		_twistSpline = std::make_shared<TwistSplineT>(otherData->getSharedSpline());
-	}
-	else {
-		// we need to convert to the other type based on its iff Tag
-		cerr << "wrong data format!" << endl;
-	}
-	return;
+std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline() { return _twistSpline; }
+
+MTypeId TwistSplineData::typeId() const { return TwistSplineData::id; }
+
+MString TwistSplineData::name() const { return TwistSplineData::typeName; }
+
+MStatus TwistSplineData::readASCII(const MArgList &args, unsigned &lastParsedElement)
+{
+    return MS::kSuccess;
 }
 
-const std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline() const {
-	return _twistSpline;
-}
+MStatus TwistSplineData::readBinary(istream &in, unsigned length) { return MS::kSuccess; }
 
-std::shared_ptr<TwistSplineT> TwistSplineData::getSharedSpline(){
-	return _twistSpline;
-}
+MStatus TwistSplineData::writeASCII(ostream &out) { return MS::kSuccess; }
 
-MTypeId TwistSplineData::typeId() const {
-	return TwistSplineData::id;
-}
-
-MString TwistSplineData::name() const { 
-	return TwistSplineData::typeName; 
-}
-
-MStatus TwistSplineData::readASCII(const MArgList& args, unsigned& lastParsedElement) {
-	return MS::kSuccess;
-}
-
-MStatus TwistSplineData::readBinary(istream& in, unsigned length) {
-	return MS::kSuccess;
-}
-
-MStatus TwistSplineData::writeASCII(ostream& out) {
-	return MS::kSuccess;
-}
-
-MStatus TwistSplineData::writeBinary(ostream& out) {
-	return MS::kSuccess;
-}
-
+MStatus TwistSplineData::writeBinary(ostream &out) { return MS::kSuccess; }

@@ -25,62 +25,60 @@ SOFTWARE.
 #pragma once
 
 #include <maya/MFnDependencyNode.h>
-#include <maya/MStatus.h>
 #include <maya/MObject.h>
 #include <maya/MPxNode.h>
+#include <maya/MStatus.h>
 #include <maya/MTypeId.h>
 
 class TwistTangentNode : public MPxNode {
-public:
-	TwistTangentNode();
-	virtual ~TwistTangentNode();
+  public:
+    TwistTangentNode();
+    virtual ~TwistTangentNode();
 
-	virtual MStatus compute(const MPlug& plug, MDataBlock& data);
-	static  void*   creator();
-	static  MStatus initialize();
-	void postConstructor() override;
+    virtual MStatus compute(const MPlug &plug, MDataBlock &data);
+    static void *creator();
+    static MStatus initialize();
+    void postConstructor() override;
 
-public:
-	// outputs
-	static MObject aOutLinearTarget;
-	static MObject aOutLinearTargetX;
-	static MObject aOutLinearTargetY;
-	static MObject aOutLinearTargetZ;
+  public:
+    // outputs
+    static MObject aOutLinearTarget;
+    static MObject aOutLinearTargetX;
+    static MObject aOutLinearTargetY;
+    static MObject aOutLinearTargetZ;
 
-	static MObject aOutTwistUp;
-	static MObject aOutTwistUpX;
-	static MObject aOutTwistUpY;
-	static MObject aOutTwistUpZ;
+    static MObject aOutTwistUp;
+    static MObject aOutTwistUpX;
+    static MObject aOutTwistUpY;
+    static MObject aOutTwistUpZ;
 
-	static MObject aOutTwistMat;
+    static MObject aOutTwistMat;
 
-	static MObject aSmoothTan;
-	static MObject aSmoothTanX;
-	static MObject aSmoothTanY;
-	static MObject aSmoothTanZ;
+    static MObject aSmoothTan;
+    static MObject aSmoothTanX;
+    static MObject aSmoothTanY;
+    static MObject aSmoothTanZ;
 
-	static MObject aOut;
-	static MObject aOutX;
-	static MObject aOutY;
-	static MObject aOutZ;
+    static MObject aOut;
+    static MObject aOutX;
+    static MObject aOutY;
+    static MObject aOutZ;
 
-	// inputs
-	static MObject aParentInverseMatrix;
-	static MObject aInTangent;
-	static MObject aPrevVertex;
-	static MObject aCurrentVertex;
-	static MObject aNextVertex;
-	static MObject aNextLinearTarget;
-	static MObject aNextLinearTargetX;
-	static MObject aNextLinearTargetY;
-	static MObject aNextLinearTargetZ;
-	static MObject aAuto;
-	static MObject aSmooth;
-	static MObject aWeight;
-	static MObject aBackpoint;
-	static MObject aEndpoint;
+    // inputs
+    static MObject aParentInverseMatrix;
+    static MObject aInTangent;
+    static MObject aPrevVertex;
+    static MObject aCurrentVertex;
+    static MObject aNextVertex;
+    static MObject aNextLinearTarget;
+    static MObject aNextLinearTargetX;
+    static MObject aNextLinearTargetY;
+    static MObject aNextLinearTargetZ;
+    static MObject aAuto;
+    static MObject aSmooth;
+    static MObject aWeight;
+    static MObject aBackpoint;
+    static MObject aEndpoint;
 
-	static MTypeId id;
+    static MTypeId id;
 };
-
-
